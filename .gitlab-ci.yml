@@ -1,0 +1,25 @@
+stages:
+  - build
+  - test
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+build_firmware:
+  stage: build
+  image: gcc:latest
+  script:
+    - echo "Building embedded firmware..."
+  #   - make clean
+  #   - make all
+  # artifacts:
+  #   paths:
+  #     - build/*.elf
+  #     - build/*.hex
+
+run_unit_tests:
+  stage: test
+  image: gcc:latest
+  script:
+    - echo "Running unit tests..."
+    # - make test
