@@ -1,6 +1,7 @@
 stages:
   - build
   - test
+  - verify
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
@@ -23,3 +24,23 @@ run_unit_tests:
   script:
     - echo "Running unit tests..."
     # - make test
+
+
+
+verify_docker_runner:
+  stage: verify
+  image: python:3.12-slim
+
+  tags:
+    - docker
+    - qa-toolchain
+
+  script:
+    - echo "Runner description=${CI_RUNNER_DESCRIPTION}"
+    - echo "Runner ID=${CI_RUNNER_ID}"
+    - echo "Commit=${CI_COMMIT_SHA}"
+    - echo "Branch=${CI_COMMIT_REF_NAME}"
+    - python --version
+    - python -c "import platform; print('architecture=' + platform.machine())"
+    - test "$CI_PROJECT_PATH" != ""
+    - echo "BEOG-14 Docker Runner verification PASS"
