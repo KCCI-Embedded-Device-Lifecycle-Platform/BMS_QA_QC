@@ -1,9 +1,5 @@
 from __future__ import annotations
-
-import os
-import re
-import shutil
-import subprocess
+import os, re, shutil, subprocess
 
 RCC_AHB1ENR = 0x40023830
 GPIOB_MODER = 0x40020400
@@ -12,83 +8,36 @@ GPIOB_OSPEEDR = 0x40020408
 GPIOB_PUPDR = 0x4002040C
 GPIOB_ODR = 0x40020414
 GPIOB_BSRR = 0x40020418
-
 LD1_MASK = 1 << 0
 LD1_RESET_MASK = 1 << 16
 
-
 def _openocd_base_command() -> list[str]:
     board_cfg = os.getenv("OPENOCD_BOARD_CFG", "board/st_nucleo_f4.cfg")
-    adapter_speed = os.getenv("OPENOCD_ADAPTER_KHZ", "1000").strip()
-    stlink_serial = os.getenv("EVSE_STLINK_SERIAL", "").strip()
-
-    command = ["openocd", "-f", board_cfg]
-
-    if stlink_serial:
-        command.extend(["-c", f"adapter serial {stlink_serial}"])
-
-    command.extend(["-c", f"adapter speed {adapter_speed}"])
-    return command
-
+    speed = os.getenv("OPENOCD_ADAPTER_KHZ", "1000").strip()
+    serial = os.getenv("EVSE_STLINK_SERIAL", "").strip()
+    cmd = ["openocd", "-f", board_cfg]
+    if serial:
+        cmd += ["-c", f"adapter serial {serial}"]
+    cmd += ["-c", f"adapter speed {speed}"]
+    return cmd
 
 def _print_usb_diagnostics() -> None:
     print("=== HIL USB diagnostics ===")
-
-    if shutil.which("lsusb") is None:
-        print("lsusb not installed; install package 'usbutils' on HIL-PI.")
-        return
-
-    result = subprocess.run(
-        ["lsusb"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=False,
-    )
-    print(result.stdout)
-
-    if "0483:" not in result.stdout.lower():
-        print(
-            "WARNING: STMicroelectronics USB device (VID 0483) was not found. "
-            "Check NUCLEO ST-LINK CN1, power, and USB enumeration."
-        )
-
-
-def _connection_error_message(output: str, returncode: int) -> str:
-    return "\n".join(
-        [
-            "OpenOCD could not open/connect to the NUCLEO-F429ZI ST-LINK.",
-            f"returncode={returncode}",
-            "",
-            "Check on HIL-PI:",
-            "1) Connect NUCLEO CN1 (ST-LINK USB) directly to the Raspberry Pi.",
-            "2) LD6 is only the PWR indicator; it should be ON when the target is powered.",
-            "3) For on-board debug: CN4 both jumpers ON, JP3=U5V, JP5 ON, JP1 OFF.",
-            "4) Close STM32CubeIDE, STM32CubeProgrammer, st-util, and other OpenOCD sessions.",
-            "5) Run: lsusb | grep -i 0483",
-            "6) Run: id gitlab-runner",
-            "7) Direct test:",
-            "   sudo -u gitlab-runner openocd -f board/st_nucleo_f4.cfg "
-            "-c 'adapter speed 1000; init; reset halt; shutdown'",
-            "",
-            "OpenOCD output:",
-            output,
-        ]
-    )
-
+    if shutil.which("lsusb"):
+        r = subprocess.run(["lsusb"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                           text=True, check=False)
+        print(r.stdout)
 
 def _cleanup_target() -> None:
-    command = _openocd_base_command()
-    command.extend(["-c", "init; reset run; shutdown"])
+    cmd = _openocd_base_command() + ["-c", "init; reset run; shutdown"]
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   timeout=15, check=False)
 
-    subprocess.run(
-        command,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=15,
-        check=False,
-    )
-
+def _append_readback(lines: list[str], marker: str) -> None:
+    lines += [
+        f"set qa_odr [lindex [read_memory 0x{GPIOB_ODR:08X} 32 1] 0]",
+        f'echo "QA_ODR_{marker}=$qa_odr"',
+    ]
 
 def _ld1_test_script() -> str:
     lines = [
@@ -102,93 +51,72 @@ def _ld1_test_script() -> str:
         f"mmw 0x{GPIOB_PUPDR:08X} 0x00000000 0x00000003",
         'echo "QA_LD1_OFF_INITIAL"',
         f"mww 0x{GPIOB_BSRR:08X} 0x{LD1_RESET_MASK:08X}",
-        f"mdw 0x{GPIOB_ODR:08X} 1",
-        "sleep 500",
     ]
+    _append_readback(lines, "OFF_INITIAL")
+    lines.append("sleep 500")
 
-    for cycle in range(1, 4):
-        lines.extend(
-            [
-                f'echo "QA_LD1_ON_{cycle}"',
-                f"mww 0x{GPIOB_BSRR:08X} 0x{LD1_MASK:08X}",
-                f"mdw 0x{GPIOB_ODR:08X} 1",
-                "sleep 1000",
-                f'echo "QA_LD1_OFF_{cycle}"',
-                f"mww 0x{GPIOB_BSRR:08X} 0x{LD1_RESET_MASK:08X}",
-                f"mdw 0x{GPIOB_ODR:08X} 1",
-                "sleep 1000",
-            ]
-        )
+    for n in range(1, 4):
+        lines += [f'echo "QA_LD1_ON_{n}"',
+                  f"mww 0x{GPIOB_BSRR:08X} 0x{LD1_MASK:08X}"]
+        _append_readback(lines, f"ON_{n}")
+        lines.append("sleep 1000")
 
-    lines.extend(
-        [
-            'echo "QA_EVSE_LD1_TEST_END"',
-            "reset run",
-            "shutdown",
-        ]
-    )
+        lines += [f'echo "QA_LD1_OFF_{n}"',
+                  f"mww 0x{GPIOB_BSRR:08X} 0x{LD1_RESET_MASK:08X}"]
+        _append_readback(lines, f"OFF_{n}")
+        lines.append("sleep 1000")
+
+    lines += ['echo "QA_EVSE_LD1_TEST_END"', "reset run", "shutdown"]
     return "\n".join(lines)
-
 
 def test_evse_onboard_ld1_smoke() -> None:
     if shutil.which("openocd") is None:
-        raise AssertionError(
-            "openocd is not installed on HIL-PI."
-        )
+        raise AssertionError("openocd is not installed on HIL-PI.")
 
     _print_usb_diagnostics()
-
-    command = _openocd_base_command()
-    command.extend(["-c", _ld1_test_script()])
+    cmd = _openocd_base_command() + ["-c", _ld1_test_script()]
 
     try:
-        result = subprocess.run(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=45,
-            check=False,
-        )
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, timeout=45, check=False)
     except subprocess.TimeoutExpired as exc:
         _cleanup_target()
-        raise AssertionError(
-            f"OpenOCD timeout after {exc.timeout} seconds"
-        ) from exc
+        raise AssertionError(f"OpenOCD timeout after {exc.timeout} seconds") from exc
 
     print(result.stdout)
 
     if result.returncode != 0:
         _cleanup_target()
         raise AssertionError(
-            _connection_error_message(result.stdout, result.returncode)
+            "OpenOCD failed.\n"
+            f"returncode={result.returncode}\n"
+            f"{result.stdout}"
         )
 
     assert "QA_EVSE_LD1_TEST_BEGIN" in result.stdout
     assert "QA_EVSE_LD1_TEST_END" in result.stdout
 
-    odr_values = [
-        int(value, 16) & LD1_MASK
-        for value in re.findall(
-            r"0x40020414:\s+([0-9a-fA-F]{8})",
-            result.stdout,
-        )
-    ]
+    matches = re.findall(r"QA_ODR_([A-Z0-9_]+)=([0-9A-Fa-fx]+)", result.stdout)
+    parsed = {name: int(value, 0) & LD1_MASK for name, value in matches}
 
-    expected = [0, LD1_MASK, 0, LD1_MASK, 0, LD1_MASK, 0]
+    expected = {
+        "OFF_INITIAL": 0,
+        "ON_1": 1,
+        "OFF_1": 0,
+        "ON_2": 1,
+        "OFF_2": 0,
+        "ON_3": 1,
+        "OFF_3": 0,
+    }
 
-    assert len(odr_values) >= len(expected), (
-        "Not enough GPIOB ODR readbacks were captured.\n"
-        f"expected_count={len(expected)}\n"
-        f"actual={odr_values}"
-    )
+    missing = [k for k in expected if k not in parsed]
+    assert not missing, f"Missing ODR markers: {missing}; captured={parsed}"
 
-    actual = odr_values[-len(expected):]
+    mismatches = {
+        k: {"expected": expected[k], "actual": parsed[k]}
+        for k in expected if parsed[k] != expected[k]
+    }
+    assert not mismatches, f"ODR mismatch: {mismatches}; captured={parsed}"
 
-    assert actual == expected, (
-        "PB0/LD1 register transition did not match the expected sequence.\n"
-        f"expected={expected}\n"
-        f"actual={actual}"
-    )
-
+    print("ODR_RESULT=" + ",".join(f"{k}:{parsed[k]}" for k in expected))
     print("RESULT=PASS TC-EVSE-LD1-001")
