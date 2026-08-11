@@ -88,5 +88,4 @@ int main(void)
 
   puts("RESULT=PASS TC-EVSE-REL-U001");
   return EXIT_SUCCESS;
-
 }
