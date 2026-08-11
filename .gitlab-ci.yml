@@ -302,23 +302,58 @@ evse_relay_host_unit:
     - qa-toolchain
 
   before_script:
+    # Runner / environment evidence
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "runner_id=${CI_RUNNER_ID}"
+    - echo "runner_tags=${CI_RUNNER_TAGS}"
+    - echo "runner_exec_arch=${CI_RUNNER_EXECUTABLE_ARCH}"
+    - echo "container_kernel=$(uname -m)"
+
+    - python --version
+    - python -m pip --version
+
+    # C host-test toolchain
     - apt-get update
     - apt-get install -y --no-install-recommends gcc git ca-certificates
     - rm -rf /var/lib/apt/lists/*
+
+    # ★ 현재 빠져 있는 부분
+    - python -m pip install --no-cache-dir "pytest==8.3.5"
+    - python -m pytest --version
+
+    - gcc --version | head -n 1
+    - git --version
+
     - mkdir -p product reports logs
+
     - |
       rm -rf product/EVSE-Application
+
       git init product/EVSE-Application
-      git -C product/EVSE-Application remote add origin "${EVSE_PRODUCT_REPO}"
-      git -C product/EVSE-Application fetch --depth 1 origin "${EVSE_PRODUCT_REF}"
-      git -C product/EVSE-Application checkout --detach FETCH_HEAD
-      ACTUAL_REF="$(git -C product/EVSE-Application rev-parse HEAD)"
+
+      git -C product/EVSE-Application \
+        remote add origin "${EVSE_PRODUCT_REPO}"
+
+      git -C product/EVSE-Application \
+        fetch --depth 1 \
+        origin "${EVSE_PRODUCT_REF}"
+
+      git -C product/EVSE-Application \
+        checkout --detach FETCH_HEAD
+
+      ACTUAL_REF="$(
+        git -C product/EVSE-Application rev-parse HEAD
+      )"
+
       test "${ACTUAL_REF}" = "${EVSE_PRODUCT_REF}"
-      echo "EVSE_PRODUCT_REF=${ACTUAL_REF}" | tee reports/evse-product-baseline.txt
+
+      echo "EVSE_PRODUCT_REF=${ACTUAL_REF}" \
+        | tee reports/evse-product-baseline.txt
 
   script:
     - |
       set -o pipefail
+
       EVSE_PRODUCT_DIR="$CI_PROJECT_DIR/product/EVSE-Application" \
       python -m pytest \
         -v \
@@ -330,9 +365,11 @@ evse_relay_host_unit:
   artifacts:
     when: always
     expire_in: 30 days
+
     reports:
       junit:
         - reports/evse-relay-host.xml
+
     paths:
       - reports/
       - logs/
@@ -342,7 +379,6 @@ evse_relay_host_unit:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - when: never
-
 # -----------------------------------------------------------------------------
 # 4) Verify the image that was approved and published - automatic after build
 # -----------------------------------------------------------------------------
