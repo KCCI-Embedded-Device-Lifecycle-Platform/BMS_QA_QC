@@ -1,0 +1,233 @@
+# BEOG QA/QC pipeline
+# Runner roles:
+# 1) BUILD-VM Docker Runner: tags = docker, qa-toolchain
+# 2) HIL-PI Docker Runner: tags = rpi-docker, armhf, armv7, python-test
+# 3) HIL-PI Shell Runner: tags = rpi-shell, hil, bench-01, stm32f429, stlink
+
+stages:
+  - validate
+  - infra
+  - image
+  - test
+  - hil
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - when: never
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+  RPI_QA_IMAGE: "$CI_REGISTRY_IMAGE/rpi-qa:armv7-v1"
+
+default:
+  interruptible: true
+
+validate_qa_repository:
+  stage: validate
+  image: python:3.11-slim-bookworm
+  tags:
+    - docker
+    - qa-toolchain
+  script:
+    - echo "runner=$CI_RUNNER_DESCRIPTION"
+    - echo "runner_tags=$CI_RUNNER_TAGS"
+    - echo "host=$(hostname)"
+    - echo "arch=$(uname -m)"
+    - echo "commit=$CI_COMMIT_SHA"
+    - python --version
+    - test -f docker/Dockerfile.rpi-qa
+    - test -f tests/hil/evse/test_evse_led_register_smoke.py
+    - python -m py_compile tests/hil/evse/test_evse_led_register_smoke.py
+    - echo "RESULT=PASS validate_qa_repository"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+verify_rpi_docker_base:
+  stage: infra
+  image: python:3.11-slim-bookworm
+  tags:
+    - rpi-docker
+    - armhf
+    - armv7
+    - python-test
+  script:
+    - echo "runner=$CI_RUNNER_DESCRIPTION"
+    - echo "runner_id=$CI_RUNNER_ID"
+    - echo "runner_tags=$CI_RUNNER_TAGS"
+    - echo "kernel=$(uname -m)"
+    - echo "container_arch=$(dpkg --print-architecture)"
+    - echo "container_bits=$(getconf LONG_BIT)"
+    - python --version
+    - mkdir -p reports
+    - |
+      python - <<'PY'
+      import json
+      import os
+      import platform
+      import struct
+      import sys
+
+      result = {
+          "runner": os.getenv("CI_RUNNER_DESCRIPTION", ""),
+          "kernel_machine": platform.machine(),
+          "python_bits": struct.calcsize("P") * 8,
+          "python_version": sys.version.split()[0],
+      }
+      print(json.dumps(result, indent=2))
+
+      if result["python_bits"] != 32:
+          raise SystemExit(
+              f"Expected 32-bit Python for linux/arm/v7, "
+              f"actual={result['python_bits']}"
+          )
+
+      print("RESULT=PASS verify_rpi_docker_base")
+      PY
+    - |
+      {
+        echo "test_id=TC-INFRA-RPI-001"
+        echo "result=PASS"
+        echo "runner=$CI_RUNNER_DESCRIPTION"
+        echo "kernel=$(uname -m)"
+        echo "container_arch=$(dpkg --print-architecture)"
+        echo "container_bits=$(getconf LONG_BIT)"
+        echo "python=$(python --version 2>&1)"
+      } > reports/rpi-docker-base.txt
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - reports/rpi-docker-base.txt
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+build_rpi_qa_image:
+  stage: image
+  tags:
+    - rpi-shell
+    - hil
+    - bench-01
+  resource_group: rpi-image-build
+  script:
+    - echo "runner=$CI_RUNNER_DESCRIPTION"
+    - echo "host=$(hostname)"
+    - docker version
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
+    - >
+      docker build
+      --pull
+      --file docker/Dockerfile.rpi-qa
+      --tag "$RPI_QA_IMAGE"
+      .
+    - >
+      docker image inspect "$RPI_QA_IMAGE"
+      --format 'OS={{.Os}} ARCH={{.Architecture}} VARIANT={{.Variant}}'
+    - |
+      IMAGE_ARCH="$(docker image inspect "$RPI_QA_IMAGE" --format '{{.Architecture}}')"
+      IMAGE_VARIANT="$(docker image inspect "$RPI_QA_IMAGE" --format '{{.Variant}}')"
+      test "$IMAGE_ARCH" = "arm"
+      test "$IMAGE_VARIANT" = "v7"
+    - docker push "$RPI_QA_IMAGE"
+    - docker logout "$CI_REGISTRY"
+  rules:
+    - changes:
+        - docker/Dockerfile.rpi-qa
+        - .dockerignore
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - when: never
+
+verify_rpi_qa_image:
+  stage: test
+  image: "$RPI_QA_IMAGE"
+  tags:
+    - rpi-docker
+    - armhf
+    - armv7
+    - python-test
+  script:
+    - file /usr/local/bin/python
+    - dpkg --print-architecture
+    - getconf LONG_BIT
+    - python --version
+    - pytest --version
+    - python -c 'import can, serial; print("python-can and pyserial import PASS")'
+    - |
+      python - <<'PY'
+      import struct
+      bits = struct.calcsize("P") * 8
+      print(f"python_bits={bits}")
+      if bits != 32:
+          raise SystemExit(f"Expected 32-bit Python, actual={bits}")
+      print("RESULT=PASS verify_rpi_qa_image")
+      PY
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - when: never
+
+evse_led_register_smoke:
+  stage: hil
+  tags: [rpi-shell, hil, bench-01, stm32f429, stlink]
+  resource_group: bench-01
+  interruptible: false
+  variables:
+    OPENOCD_BOARD_CFG: "board/st_nucleo_f4.cfg"
+    OPENOCD_ADAPTER_KHZ: "1000"
+
+  before_script:
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "host=$(hostname)"
+    - id
+    - openocd --version
+    - python3 --version
+    - mkdir -p reports logs
+    - |
+      lsusb | tee logs/lsusb.txt
+      grep -qi '0483:' logs/lsusb.txt
+    - |
+      openocd -f board/st_nucleo_f4.cfg         -c "adapter speed 1000; init; reset halt; shutdown"         2>&1 | tee logs/openocd-preflight.log
+
+  script:
+    - |
+      set -o pipefail
+      python3 -m pytest -v -s         tests/hil/evse/test_evse_led_register_smoke.py         --junitxml=reports/evse-ld1-smoke.xml         2>&1 | tee logs/evse-ld1-smoke.log
+
+  artifacts:
+    when: always
+    expire_in: 30 days
+    reports:
+      junit:
+        - reports/evse-ld1-smoke.xml
+    paths:
+      - reports/
+      - logs/
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+    - when: never
