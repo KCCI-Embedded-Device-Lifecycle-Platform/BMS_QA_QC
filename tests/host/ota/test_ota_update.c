@@ -16,7 +16,8 @@
     return 1; \
 } } while (0)
 
-_Static_assert(BOOT_APP_START_ADDRESS == QA_REQ_EVSE_APP_START, "app start drift");
+_Static_assert(BOOT_APP_START_ADDRESS == QA_REQ_OTA_APP_START_ADDRESS,
+               "app start drift");
 _Static_assert(BOOT_APP_MAX_SIZE == QA_REQ_OTA_APP_CAPACITY, "capacity drift");
 
 static void make_valid_image(uint8_t image[16])
