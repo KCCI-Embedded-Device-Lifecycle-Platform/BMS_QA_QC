@@ -157,8 +157,8 @@
 - Trace: `SWRS-EVSE-004` / `SWE.5` / `Component` / `P0`
 - Method / disposition: Decision / `READY`
 - Precondition: Pinned product SHA and independent QA oracle are available.
-- Stimulus: Set charge-ready/relay request with permit false.
-- Expected oracle: Relay command remains OFF and CHARGING is not entered.
+- Stimulus: Start in CHARGING with relay ON, then remove charge permit.
+- Expected oracle: Relay command turns OFF and the FSM enters FAULT.
 - Automation: `tests/host/evse/test_evse_core_host.py`
 
 ### TC-EVSE-SAFE-003 — Charge-condition decision table
