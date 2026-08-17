@@ -1,8 +1,10 @@
 [tool.pytest.ini_options]
+pythonpath = ["."]
 minversion = "8.0"
 addopts = "-ra --strict-markers"
 testpaths = ["tests", "hil/tests"]
 python_files = ["test_*.py"]
+# 기존 markers, addopts 등 설정은 그대로 유지
 markers = [
   "host: host-side unit/component verification",
   "hil: requires approved physical HIL equipment",
