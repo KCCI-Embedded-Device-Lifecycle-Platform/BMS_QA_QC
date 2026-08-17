@@ -1,0 +1,649 @@
+﻿Issue Type,Summary,Description,Priority,Labels
+Test,[TC-BMS-OV-001] Cell OV detection boundary,"Test ID: TC-BMS-OV-001
+Requirement: SWRS-BMS-001
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Apply 4199, 4200 and 4201 mV candidates.
+Expected independent oracle: 4199/4200 are normal and 4201 is an OV candidate.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-OV-002] Cell OV confirmation count N-1/N,"Test ID: TC-BMS-OV-002
+Requirement: SWRS-BMS-007
+ASPICE: SWE.4 / Host Unit
+Method: State transition
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Apply an OV candidate for two then three 100 ms evaluations.
+Expected independent oracle: Two samples do not latch; the third latches OV.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-OV-003] Cell OV clear hysteresis boundary,"Test ID: TC-BMS-OV-003
+Requirement: SWRS-BMS-001,SWRS-BMS-008
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: From OV fault apply 4150 then 4149 mV.
+Expected independent oracle: 4150 is not a clear candidate; all cells below 4150 start clear hold.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-OV-004] Cell OV clear hold time,"Test ID: TC-BMS-OV-004
+Requirement: SWRS-BMS-008
+ASPICE: SWE.4 / Host Unit
+Method: Timing boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Hold all clear values just below then at 3000 ms.
+Expected independent oracle: Fault remains before the hold and clears at the approved hold.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-UV-001] Cell UV detect and clear,"Test ID: TC-BMS-UV-001
+Requirement: SWRS-BMS-002,SWRS-BMS-007
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Exercise 3000/2999 mV and 3100/3101 mV boundaries.
+Expected independent oracle: Strict detect/clear comparisons and confirmation are observed.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-PACKOV-001] Pack over-voltage detect and clear,"Test ID: TC-BMS-PACKOV-001
+Requirement: SWRS-BMS-003,SWRS-BMS-007
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Exercise 16800/16801 and 16600/16599 mV.
+Expected independent oracle: Strict detect/clear comparisons are observed.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-OC-001] Signed over-current absolute threshold,"Test ID: TC-BMS-OC-001
+Requirement: SWRS-BMS-004
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Apply +1000/+1001 and -1000/-1001 current values.
+Expected independent oracle: Detection uses absolute signed current and strict threshold.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-OT-001] Over-temperature detect and clear,"Test ID: TC-BMS-OT-001
+Requirement: SWRS-BMS-005
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Exercise 550/551 and 500/499 in 0.1 C units.
+Expected independent oracle: 55.0 C is normal, 55.1 C detects; 50.0 C does not clear, 49.9 C does.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-SENSOR-001] Sensor readiness and current cross-check,"Test ID: TC-BMS-SENSOR-001
+Requirement: SWRS-BMS-006
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Set sensor_ready false, then apply shunt/hall difference 500 and 501 mA.
+Expected independent oracle: Not-ready or difference greater than 500 mA sets SENSOR_ERR.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-PERMIT-001] Critical fault denies charge permit,"Test ID: TC-BMS-PERMIT-001
+Requirement: SWRS-BMS-009
+ASPICE: SWE.4 / Host Unit
+Method: Decision table
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Apply every critical fault bit and representative combinations.
+Expected independent oracle: Any critical fault forces permit false.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-4"
+Test,[TC-BMS-FSM-001] BMS fault-state transition matrix,"Test ID: TC-BMS-FSM-001
+Requirement: SWRS-BMS-010
+ASPICE: SWE.5 / Component
+Method: State transition
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Request charge across IDLE/READY/CHARGING/FAULT and clear fault.
+Expected independent oracle: FAULT cannot charge; accepted clear returns to IDLE.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-5"
+Test,[TC-BMS-LINK-001] EVSE link timeout and recovery timing,"Test ID: TC-BMS-LINK-001
+Requirement: SWRS-BMS-011
+ASPICE: SWE.5 / Component/HIL
+Method: Fault injection
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Isolated EVSE TX silence/restore control is configured.
+Stimulus/Steps: Silence EVSE frames, then restore them.
+Expected independent oracle: LINK_TIMEOUT occurs at 1000 ms requirement and clears after 300 ms stable reception.
+Automation: hil/tests/test_can_timeout.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,bms,swe-5"
+Test,[TC-BMS-RELAY-001] EVSE request and permit control PA8,"Test ID: TC-BMS-RELAY-001
+Requirement: SWRS-BMS-012
+ASPICE: SWE.5 / Component/HIL
+Method: State/output
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Current-limited, hard-interlocked BMS relay fixture is connected.
+Stimulus/Steps: Apply valid request+permit, then cancel and critical fault.
+Expected independent oracle: PA8 is ON only for valid request+permit and LOW for cancel/fault.
+Automation: hil/tests/test_can_e2e.py;hil/tests/test_safe_state.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,bms,swe-5"
+Test,[TC-BMS-MULTI-001] Multi-fault safety convergence,"Test ID: TC-BMS-MULTI-001
+Requirement: SWRS-BMS-009
+ASPICE: SWE.4 / Host Unit
+Method: Combinatorial
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Apply representative simultaneous fault masks and clear subsets.
+Expected independent oracle: Permit remains false while any critical fault remains.
+Automation: tests/host/bms/test_bms_safety_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,bms,swe-4"
+Test,[TC-EVSE-SAFE-001] Power and reset Safe-Off,"Test ID: TC-EVSE-SAFE-001
+Requirement: SWRS-EVSE-001
+ASPICE: SWE.5 / Target Component
+Method: Reset/output
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Initialize and reset the target.
+Expected independent oracle: Relay command and PE11 are LOW after init/reset.
+Automation: tests/host/evse/test_evse_core_host.py;hil/tests/test_safe_state.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,evse,swe-5"
+Test,[TC-EVSE-IN-001] START and STOP 30 ms debounce,"Test ID: TC-EVSE-IN-001
+Requirement: SWRS-EVSE-002
+ASPICE: SWE.4 / Host Unit
+Method: Timing boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Apply less than 30 ms then three stable 10 ms samples.
+Expected independent oracle: Short input is ignored; stable input generates one event.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,evse,swe-4"
+Test,[TC-EVSE-SAFE-002] Permit false forces relay off,"Test ID: TC-EVSE-SAFE-002
+Requirement: SWRS-EVSE-004
+ASPICE: SWE.5 / Component
+Method: Decision
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Set charge-ready/relay request with permit false.
+Expected independent oracle: Relay command remains OFF and CHARGING is not entered.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,evse,swe-5"
+Test,[TC-EVSE-SAFE-003] Charge-condition decision table,"Test ID: TC-EVSE-SAFE-003
+Requirement: SWRS-EVSE-003
+ASPICE: SWE.4 / Host Unit
+Method: Decision table
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Evaluate all 64 combinations of six safety inputs.
+Expected independent oracle: Charging is allowed only for the single approved conjunction.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,evse,swe-4"
+Test,[TC-EVSE-SAFE-004] BMS timeout drives Safe-Off,"Test ID: TC-EVSE-SAFE-004
+Requirement: SWRS-EVSE-005
+ASPICE: SWE.5 / Target/HIL
+Method: Fault injection
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: EVSE is in charging state; isolated BMS TX silence control is configured.
+Stimulus/Steps: While charging, stop BMS MAIN frames for more than 500 ms.
+Expected independent oracle: BMS becomes offline and PE11 is LOW within approved task tolerance.
+Automation: tests/host/evse/test_evse_core_host.py;hil/tests/test_can_timeout.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,evse,swe-5"
+Test,[TC-EVSE-SAFE-005] Fault or permit-loss response latency,"Test ID: TC-EVSE-SAFE-005
+Requirement: SWRS-EVSE-006
+ASPICE: SWE.6 / Integration
+Method: Timing measurement
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Inject an approved critical BMS fault while charging.
+Expected independent oracle: Relay converges OFF; measured latency is recorded without an unapproved upper-limit verdict.
+Automation: tests/host/evse/test_evse_core_host.py;hil/tests/test_can_e2e.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,evse,swe-6"
+Test,[TC-EVSE-SAFE-006] Arbitrary reset robustness,"Test ID: TC-EVSE-SAFE-006
+Requirement: SWRS-EVSE-001
+ASPICE: SWE.5 / Target/HIL
+Method: Robustness
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Repeat target reset three times from arbitrary prior RAM state.
+Expected independent oracle: Every restart begins with relay command and PE11 LOW.
+Automation: tests/host/evse/test_evse_core_host.py;hil/tests/test_safe_state.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,evse,swe-5"
+Test,[TC-EVSE-FAULT-001] EVSE fault bitmask mapping,"Test ID: TC-EVSE-FAULT-001
+Requirement: SWRS-EVSE-007
+ASPICE: SWE.4 / Host Unit
+Method: Equivalence
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Encode each EVSE fault bit independently.
+Expected independent oracle: 0x202 data[0] maps exactly to 01/02/04/08/10/20/40/80.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,evse,swe-4"
+Test,[TC-EVSE-CAN-REQ-001] START and STOP charge request,"Test ID: TC-EVSE-CAN-REQ-001
+Requirement: SWRS-EVSE-008
+ASPICE: SWE.5 / Component/HIL
+Method: State transition
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Issue START then STOP and observe the next fresh BMS response.
+Expected independent oracle: 0x201 transmits 1/0; cached BMS data cannot acknowledge START.
+Automation: tests/host/evse/test_evse_core_host.py;hil/tests/test_can_e2e.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,evse,swe-5"
+Test,[TC-CAN-PROTO-001] All defined CAN ID and DLC contracts,"Test ID: TC-CAN-PROTO-001
+Requirement: SWRS-CAN-001,SWRS-CAN-002
+ASPICE: SWE.4 / Host Unit
+Method: Interface
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Enumerate all approved IDs and exact DLC values.
+Expected independent oracle: All frames are unique 11-bit IDs with ICD DLC.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,swe-4"
+Test,[TC-CAN-ENDIAN-001] Little-endian and signed-current decoding,"Test ID: TC-CAN-ENDIAN-001
+Requirement: SWRS-CAN-003
+ASPICE: SWE.4 / Host Unit
+Method: Data representation
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Decode known byte patterns including negative current.
+Expected independent oracle: Decoded values exactly match independent LE/signed oracle.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,swe-4"
+Test,[TC-CAN-NEG-001] Reject wrong DLC Extended and RTR frames,"Test ID: TC-CAN-NEG-001
+Requirement: SWRS-CAN-004
+ASPICE: SWE.4 / Host Unit
+Method: Negative partition
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Pass wrong DLC, extended and RTR variants of a known ID.
+Expected independent oracle: Each is INVALID and leaves prior snapshot byte-identical.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,swe-4"
+Test,[TC-CAN-UNKID-001] Ignore unknown CAN ID,"Test ID: TC-CAN-UNKID-001
+Requirement: SWRS-CAN-004
+ASPICE: SWE.4 / Host Unit
+Method: Negative partition
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Pass a well-formed unassigned standard ID.
+Expected independent oracle: Result is IGNORED and prior snapshot is unchanged.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,can,swe-4"
+Test,[TC-CAN-BUS-001] Three-node 500 kbit/s bus acceptance,"Test ID: TC-CAN-BUS-001
+Requirement: SWRS-CAN-001
+ASPICE: SYS.4 / HIL
+Method: Physical acceptance
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: BMS, EVSE and Pi are connected with power off resistance evidence.
+Stimulus/Steps: Measure termination and observe BMS+EVSE from Pi for 3 s.
+Expected independent oracle: 54–66 ohm, both node frame ranges visible, zero observed error frames.
+Automation: hil/tests/test_can_bus_acceptance.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,sys-4"
+Test,[TC-CAN-HB-001] CAN periodicity schedule,"Test ID: TC-CAN-HB-001
+Requirement: SWRS-CAN-005
+ASPICE: SWE.5 / HIL
+Method: Timing
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Capture at least 4 seconds of approved periodic IDs.
+Expected independent oracle: Median periods match 100/500/1000 ms within configured tolerance.
+Automation: hil/tests/test_can_timeout.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,swe-5"
+Test,[TC-CAN-E2E-001] BMS MAIN updates EVSE snapshot,"Test ID: TC-CAN-E2E-001
+Requirement: SWRS-CAN-002,SWRS-CAN-003
+ASPICE: SWE.6 / Integration
+Method: Back-to-back
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Decode a known 0x100 payload.
+Expected independent oracle: permit/state/fault/current and RX sequence update exactly.
+Automation: tests/host/evse/test_evse_core_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,swe-6"
+Test,[TC-CAN-E2E-002] START STOP through BMS state and PA8,"Test ID: TC-CAN-E2E-002
+Requirement: SWRS-BMS-012,SWRS-EVSE-008,SWRS-CAN-006
+ASPICE: SYS.4 / System HIL
+Method: End-to-end
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Electrically issue START then STOP.
+Expected independent oracle: 0x201 1/0, BMS state, EVSE state and relay outputs follow the approved sequence.
+Automation: hil/tests/test_can_e2e.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,sys-4"
+Test,[TC-CAN-E2E-003] Critical BMS fault drives EVSE Safe-Off,"Test ID: TC-CAN-E2E-003
+Requirement: SWRS-BMS-009,SWRS-EVSE-006,SWRS-CAN-006
+ASPICE: SYS.5 / System HIL
+Method: End-to-end fault
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Inject one approved critical BMS fault while charging.
+Expected independent oracle: Fault then permit=0 then EVSE relay command/PE11 OFF are observed in order.
+Automation: hil/tests/test_can_e2e.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,can,sys-5"
+Test,[TC-CAN-BUSOFF-001] Bus-off detect and recovery,"Test ID: TC-CAN-BUSOFF-001
+Requirement: SWRS-CAN-007
+ASPICE: SWE.5 / HIL Fault Injection
+Method: Fault injection
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Bus fault fixture and recovery policy are approved.
+Stimulus/Steps: Use the reviewed fixture to enter then restore bus fault.
+Expected independent oracle: Bus-off is detected and approved recovery behavior occurs.
+Automation: hil/tests/test_bus_off_recovery.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,can,swe-5"
+Test,[TC-OTA-BOOT-001] Valid application reset jump,"Test ID: TC-OTA-BOOT-001
+Requirement: SWRS-OTA-001
+ASPICE: SWE.5 / Target/HIL
+Method: State/output
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Reset a target containing a verified valid app.
+Expected independent oracle: PC enters 0x08020000–0x08100000.
+Automation: hil/tests/test_ota_boot.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,ota,swe-5"
+Test,[TC-OTA-BOOT-002] Invalid app or user button keeps boot mode,"Test ID: TC-OTA-BOOT-002
+Requirement: SWRS-OTA-001
+ASPICE: SWE.5 / Target/HIL
+Method: State/output
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Hold the fixture-controlled user button during reset and issue HELLO.
+Expected independent oracle: Application jump is prevented and boot command loop returns ACK.
+Automation: hil/tests/test_ota_boot.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,ota,swe-5"
+Test,[TC-OTA-PROTO-001] Text and binary boot protocol commands,"Test ID: TC-OTA-PROTO-001
+Requirement: SWRS-OTA-002
+ASPICE: SWE.4 / Host/Target
+Method: Interface
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Issue HELLO, VERSION, PROTO, RUN and a binary round trip.
+Expected independent oracle: Exact response/action and framing are returned.
+Automation: tests/host/ota/test_ota_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,ota,swe-4"
+Test,[TC-OTA-PROTO-002] Binary packet CRC16 rejection,"Test ID: TC-OTA-PROTO-002
+Requirement: SWRS-OTA-003
+ASPICE: SWE.4 / Host Unit
+Method: Negative
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Corrupt one CRC bit in a valid START_UPDATE packet.
+Expected independent oracle: Parser reports CRC error or target NACK and performs no update action.
+Automation: tests/host/ota/test_ota_host.py;hil/tests/test_ota_crc_failure.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,ota,swe-4"
+Test,[TC-OTA-SIZE-001] Image size boundaries,"Test ID: TC-OTA-SIZE-001
+Requirement: SWRS-OTA-004
+ASPICE: SWE.4 / Host Unit
+Method: Boundary
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Try size 0, 7, 8, capacity and capacity+1.
+Expected independent oracle: Invalid/oversize image is rejected before flash write.
+Automation: tests/host/ota/test_ota_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,ota,swe-4"
+Test,[TC-OTA-OFFSET-001] Data offset and length sequence,"Test ID: TC-OTA-OFFSET-001
+Requirement: SWRS-OTA-004
+ASPICE: SWE.4 / Host Unit
+Method: Boundary/sequence
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Send out-of-order offset and invalid intermediate length.
+Expected independent oracle: Request is rejected and expected next offset is unchanged.
+Automation: tests/host/ota/test_ota_host.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,ota,swe-4"
+Test,[TC-OTA-CRC-001] Whole-image CRC32 mismatch,"Test ID: TC-OTA-CRC-001
+Requirement: SWRS-OTA-005
+ASPICE: SWE.4 / Host/Target
+Method: Negative
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Transfer a valid-vector image with one-bit wrong expected CRC32.
+Expected independent oracle: END_UPDATE returns CRC_MISMATCH and app vector remains erased.
+Automation: tests/host/ota/test_ota_host.py;hil/tests/test_ota_crc_failure.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,ota,swe-4"
+Test,[TC-OTA-UPDATE-001] Valid image end-to-end update,"Test ID: TC-OTA-UPDATE-001
+Requirement: SWRS-OTA-005
+ASPICE: SWE.5 / Target/HIL
+Method: End-to-end
+Disposition: READY_HIL_CONDITIONAL
+
+Precondition: Manual approval, verified recovery image and target power control are available.
+Stimulus/Steps: Erase, sequentially write, verify and end a known recovery image.
+Expected independent oracle: CRC/vector valid image completes and boots; recovery evidence is retained.
+Automation: tests/host/ota/test_ota_host.py;hil/tests/test_ota_update.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,ota,swe-5"
+Test,[TC-OTA-GATE-001] Manual approval before target update,"Test ID: TC-OTA-GATE-001
+Requirement: SWRS-OTA-006
+ASPICE: SUP.8 / Process
+Method: Pipeline inspection
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Evaluate pipeline rules for branch/pipeline sources.
+Expected independent oracle: No target erase/write job starts automatically; protected manual gate is required.
+Automation: tests/quality/test_infrastructure.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,ota,sup-8"
+Test,[TC-OTA-VERSION-001] Firmware downgrade policy,"Test ID: TC-OTA-VERSION-001
+Requirement: SWRS-OTA-007
+ASPICE: — / GAP
+Method: Requirement analysis
+Disposition: GAP_REQUIREMENT
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Attempt no product update until version contract exists.
+Expected independent oracle: JUnit records GAP_REQUIREMENT, never PASS.
+Automation: tests/quality/test_declared_gaps.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,ota,—"
+Test,[TC-OTA-ROLLBACK-001] Boot failure rollback,"Test ID: TC-OTA-ROLLBACK-001
+Requirement: SWRS-OTA-008
+ASPICE: — / GAP/HIL
+Method: Requirement analysis
+Disposition: GAP_REQUIREMENT
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Attempt no power-cut update until rollback mechanism/recovery is approved.
+Expected independent oracle: JUnit records GAP_REQUIREMENT, never PASS.
+Automation: tests/quality/test_declared_gaps.py;hil/tests/test_ota_power_loss.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,ota,—"
+Test,[TC-OTA-XTARGET-001] Wrong ECU image rejection,"Test ID: TC-OTA-XTARGET-001
+Requirement: SWRS-OTA-009
+ASPICE: — / GAP
+Method: Requirement analysis
+Disposition: GAP_REQUIREMENT
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Attempt no cross-target assertion without signed target identity.
+Expected independent oracle: JUnit records GAP_REQUIREMENT, never PASS.
+Automation: tests/quality/test_declared_gaps.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,ota,—"
+Test,[TC-INFRA-CM-001] Product SHA artifact and target identity,"Test ID: TC-INFRA-CM-001
+Requirement: SWRS-INFRA-001
+ASPICE: SUP.8 / Process
+Method: Static/evidence
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Validate full refs then build/hash/verify target image.
+Expected independent oracle: Source SHA, ELF/BIN SHA256 and target verification agree.
+Automation: tests/quality/test_infrastructure.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,infra,sup-8"
+Test,[TC-INFRA-PIPE-001] Ubuntu to Raspberry Pi pipeline topology,"Test ID: TC-INFRA-PIPE-001
+Requirement: SWRS-INFRA-002
+ASPICE: SUP.8 / Process
+Method: Pipeline
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Lint CI and run Host then protected HIL stages.
+Expected independent oracle: Jobs use intended runner tags and artifacts flow forward.
+Automation: tests/quality/test_infrastructure.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,infra,sup-8"
+Test,[TC-INFRA-RES-001] Result classification integrity,"Test ID: TC-INFRA-RES-001
+Requirement: SWRS-INFRA-003
+ASPICE: SUP.9 / Process
+Method: Schema
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Validate every result against the classification enum.
+Expected independent oracle: Product/test/gap/config/infra outcomes remain distinguishable.
+Automation: tests/quality/test_infrastructure.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,infra,sup-9"
+Test,[TC-INFRA-JUNIT-001] JUnit and evidence artifact generation,"Test ID: TC-INFRA-JUNIT-001
+Requirement: SWRS-INFRA-003
+ASPICE: SUP.8 / Process
+Method: Self-test
+Disposition: READY
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: Write PASS, FAIL and GAP sample results and parse XML.
+Expected independent oracle: Counts, failure and skipped nodes are machine-readable.
+Automation: tests/quality/test_infrastructure.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",High,"qa,aspice,infra,sup-8"
+Test,[TC-GA-DECODE-001] Gateway input decoding,"Test ID: TC-GA-DECODE-001
+Requirement: SWRS-GA-001
+ASPICE: SWE.4 / Contract waiting
+Method: Contract
+Disposition: CONTRACT_WAITING
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: No decode stimulus until input schema is approved.
+Expected independent oracle: BLOCKED_INFRA is recorded, not PASS.
+Automation: tests/quality/test_gateway_contract.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,gateway,swe-4"
+Test,[TC-GA-STATE-001] Gateway state normalization,"Test ID: TC-GA-STATE-001
+Requirement: SWRS-GA-001
+ASPICE: SWE.5 / Contract waiting
+Method: Contract
+Disposition: CONTRACT_WAITING
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: No state vectors until normalized schema is approved.
+Expected independent oracle: BLOCKED_INFRA is recorded, not PASS.
+Automation: tests/quality/test_gateway_contract.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,gateway,swe-5"
+Test,[TC-GA-STALE-001] Gateway stale-data handling,"Test ID: TC-GA-STALE-001
+Requirement: SWRS-GA-001
+ASPICE: SWE.5 / Contract waiting
+Method: Contract
+Disposition: CONTRACT_WAITING
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: No stale timeout is asserted until freshness policy is approved.
+Expected independent oracle: BLOCKED_INFRA is recorded, not PASS.
+Automation: tests/quality/test_gateway_contract.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,gateway,swe-5"
+Test,[TC-GA-INVALID-001] Gateway invalid-input handling,"Test ID: TC-GA-INVALID-001
+Requirement: SWRS-GA-001
+ASPICE: SWE.4 / Contract waiting
+Method: Contract
+Disposition: CONTRACT_WAITING
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: No malformed vectors until validation rules are approved.
+Expected independent oracle: BLOCKED_INFRA is recorded, not PASS.
+Automation: tests/quality/test_gateway_contract.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,gateway,swe-4"
+Test,[TC-GA-LOG-001] Gateway diagnostic logging,"Test ID: TC-GA-LOG-001
+Requirement: SWRS-GA-001
+ASPICE: SWE.5 / Contract waiting
+Method: Contract
+Disposition: CONTRACT_WAITING
+
+Precondition: Pinned product SHA and independent QA oracle are available.
+Stimulus/Steps: No log assertion until event and redaction policy is approved.
+Expected independent oracle: BLOCKED_INFRA is recorded, not PASS.
+Automation: tests/quality/test_gateway_contract.py
+
+QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Medium,"qa,aspice,gateway,swe-5"

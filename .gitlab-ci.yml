@@ -1,3 +1,6 @@
+include:
+  - local: ci/qa-core.yml
+
 stages:
   - validate
   - infra
