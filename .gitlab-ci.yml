@@ -1,0 +1,619 @@
+include:
+  - local: ci/qa-core.yml
+
+stages:
+  - validate
+  - infra
+  - image
+  - test
+  - hil
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+    - if: '$CI_COMMIT_BRANCH =~ /^fix\//'
+    - if: '$CI_COMMIT_BRANCH =~ /^test\//'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - when: never
+
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+
+  # Immutable tag. Do not overwrite one fixed tag for every commit.
+  RPI_QA_IMAGE: "${CI_REGISTRY_IMAGE}/rpi-qa:armv7-${CI_COMMIT_SHORT_SHA}"
+
+  # BEOG-17 canonical EVSE product baseline.
+  # Update deliberately when the product baseline changes.
+  EVSE_PRODUCT_REPO: "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/EVSE-Application.git"
+  EVSE_PRODUCT_REF: "a133fbf003be722dc1a1d879e5f7e98639e82e11"
+
+default:
+  interruptible: true
+
+# -----------------------------------------------------------------------------
+# 1) Fast repository validation - BUILD-VM / Docker
+# -----------------------------------------------------------------------------
+validate_qa_repository:
+  stage: validate
+  image: python:3.11-slim-bookworm
+
+  tags:
+    - docker
+    - qa-toolchain
+
+  script:
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "runner_tags=${CI_RUNNER_TAGS}"
+    - echo "commit=${CI_COMMIT_SHA}"
+    - echo "branch=${CI_COMMIT_REF_NAME}"
+    - python --version
+    - test -f docker/Dockerfile.rpi-qa
+    # Existing HIL infrastructure smoke (TC-EVSE-LD1-001)
+    - test -f tests/hil/evse/test_evse_led_register_smoke.py
+    - python -m py_compile tests/hil/evse/test_evse_led_register_smoke.py
+
+    # BEOG-17 / TC-EVSE-REL-001 canonical files
+    - test -f tests/hil/evse/test_evse_relay_pe11_smoke.py
+    - test -f tests/host/evse/test_evse_relay_host.py
+    - test -f tests/host/evse/test_relay_driver.c
+    - test -f tests/host/evse/test_hw_gpio_relay.c
+    - test -f tests/host/evse/mocks/main.h
+    - test -f tests/host/evse/mocks/hw_def.h
+    - python -m py_compile tests/hil/evse/test_evse_relay_pe11_smoke.py
+    - python -m py_compile tests/host/evse/test_evse_relay_host.py
+    - echo "RESULT=PASS validate_qa_repository"
+
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+    - if: '$CI_COMMIT_BRANCH =~ /^test\//'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+# -----------------------------------------------------------------------------
+# 2) HIL-PI Docker Runner infrastructure validation - automatic
+#
+# Note:
+#   The current Raspberry Pi has an aarch64 kernel but armhf 32-bit userspace.
+#   Do NOT decide the container ABI from `uname -m` alone.
+# -----------------------------------------------------------------------------
+verify_rpi_docker_base:
+  stage: infra
+  image: python:3.11-slim-bookworm
+
+  tags:
+    - rpi-docker
+    - armhf
+    - armv7
+    - python-test
+
+  script:
+    - mkdir -p reports
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "runner_id=${CI_RUNNER_ID}"
+    - echo "kernel=$(uname -m)"
+    - echo "container_arch=$(dpkg --print-architecture)"
+    - echo "container_bits=$(getconf LONG_BIT)"
+    - python --version
+
+    - |
+      python - <<'PY'
+      import json
+      import os
+      import platform
+      import struct
+      import sys
+
+      result = {
+          "runner": os.getenv("CI_RUNNER_DESCRIPTION", ""),
+          "kernel_machine": platform.machine(),
+          "python_bits": struct.calcsize("P") * 8,
+          "python_version": sys.version.split()[0],
+      }
+
+      print(json.dumps(result, indent=2))
+
+      if result["python_bits"] != 32:
+          raise SystemExit(
+              "Expected a 32-bit Python userspace on the ARMv7 HIL-PI runner; "
+              f"actual={result['python_bits']}"
+          )
+
+      print("RESULT=PASS verify_rpi_docker_base")
+      PY
+
+    - |
+      {
+        echo "test_id=TC-INFRA-RPI-001"
+        echo "result=PASS"
+        echo "runner=${CI_RUNNER_DESCRIPTION}"
+        echo "commit=${CI_COMMIT_SHA}"
+        echo "kernel=$(uname -m)"
+        echo "container_arch=$(dpkg --print-architecture)"
+        echo "container_bits=$(getconf LONG_BIT)"
+        echo "python=$(python --version 2>&1)"
+      } > reports/rpi-docker-base.txt
+
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - reports/rpi-docker-base.txt
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+# -----------------------------------------------------------------------------
+# 3) Build + publish custom ARMv7 QA image - BLOCKING MANUAL GATE
+#
+# Runs directly on HIL-PI host through the Shell Runner.
+# No privileged Docker-in-Docker and no host docker.sock mapping into a job
+# container are required.
+#
+# Registry hardening:
+#   - unique tag per commit
+#   - explicit linux/arm/v7 build
+#   - explicit single-platform push
+#   - controlled retry for transient registry/network failures
+#   - no PAT stored in CI: uses GitLab per-job registry credentials
+# -----------------------------------------------------------------------------
+build_rpi_qa_image:
+  stage: image
+
+  tags:
+    - rpi-shell
+    - hil
+    - bench-01
+
+  resource_group: rpi-image-publish
+  interruptible: false
+
+  manual_confirmation: "ARMv7 QA 이미지를 GitLab Container Registry에 빌드·푸시합니다. HIL-PI 상태와 Registry 경로를 확인했습니까?"
+
+  before_script:
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "host=$(hostname)"
+    - echo "image=${RPI_QA_IMAGE}"
+    - docker version
+    - docker buildx version
+    - getent hosts "${CI_REGISTRY}" || true
+    - >
+      echo "${CI_REGISTRY_PASSWORD}" |
+      docker login "${CI_REGISTRY}"
+      --username "${CI_REGISTRY_USER}"
+      --password-stdin
+
+  script:
+    - mkdir -p reports
+
+    - >
+      docker build
+      --pull
+      --platform linux/arm/v7
+      --file docker/Dockerfile.rpi-qa
+      --tag "${RPI_QA_IMAGE}"
+      .
+
+    - >
+      docker image inspect "${RPI_QA_IMAGE}"
+      --format 'OS={{.Os}} ARCH={{.Architecture}} VARIANT={{.Variant}}'
+
+    - |
+      IMAGE_ARCH="$(docker image inspect "${RPI_QA_IMAGE}" --format '{{.Architecture}}')"
+      IMAGE_VARIANT="$(docker image inspect "${RPI_QA_IMAGE}" --format '{{.Variant}}')"
+
+      test "${IMAGE_ARCH}" = "arm"
+      test "${IMAGE_VARIANT}" = "v7"
+
+      printf 'image=%s\narch=%s\nvariant=%s\n' \
+        "${RPI_QA_IMAGE}" "${IMAGE_ARCH}" "${IMAGE_VARIANT}" \
+        > reports/rpi-qa-image-build.txt
+
+    # GitLab.com/registry/network failures can be transient. Retry only the push.
+    # A persistent failure still fails the approval gate.
+    - |
+      push_ok=0
+
+      for attempt in 1 2 3; do
+        echo "Registry push attempt ${attempt}/3"
+
+        if docker push \
+          --platform linux/arm/v7 \
+          "${RPI_QA_IMAGE}"; then
+          push_ok=1
+          break
+        fi
+
+        if [ "${attempt}" -lt 3 ]; then
+          sleep "$((attempt * 10))"
+        fi
+      done
+
+      if [ "${push_ok}" -ne 1 ]; then
+        echo "ERROR: Registry push failed after 3 attempts."
+        echo "Check the first registry error above; do not treat the Raspberry Pi password warning as the job root cause."
+        exit 1
+      fi
+
+    # Registry round-trip check. This checks that the pushed manifest can be read.
+    - docker pull --platform linux/arm/v7 "${RPI_QA_IMAGE}"
+
+    - |
+      {
+        echo "push_result=PASS"
+        echo "image=${RPI_QA_IMAGE}"
+        echo "commit=${CI_COMMIT_SHA}"
+        echo "pipeline=${CI_PIPELINE_ID}"
+        echo "job=${CI_JOB_ID}"
+      } >> reports/rpi-qa-image-build.txt
+
+  after_script:
+    - docker logout "${CI_REGISTRY}" >/dev/null 2>&1 || true
+
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - reports/rpi-qa-image-build.txt
+
+  rules:
+    # On develop, publish only when the image definition changed, and require
+    # an explicit approval.
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      changes:
+        - docker/Dockerfile.rpi-qa
+        - .dockerignore
+      when: manual
+      allow_failure: false
+
+    # Default/main is also a blocking approval gate.
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - docker/Dockerfile.rpi-qa
+        - .dockerignore
+      when: manual
+      allow_failure: false
+
+    # A manually started pipeline can explicitly request an image build.
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: false
+
+    - when: never
+
+# -----------------------------------------------------------------------------
+# BEOG-17 A) EVSE relay host C unit verification - BUILD-VM / Ubuntu Docker
+#
+# Product repositories are not submodules. The exact approved GitHub commit is
+# fetched transiently for verification.
+# -----------------------------------------------------------------------------
+evse_relay_host_unit:
+  stage: test
+  image: python:3.11-slim-bookworm
+
+  tags:
+    - docker
+    - qa-toolchain
+
+  before_script:
+    # Runner / environment evidence
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "runner_id=${CI_RUNNER_ID}"
+    - echo "runner_tags=${CI_RUNNER_TAGS}"
+    - echo "runner_exec_arch=${CI_RUNNER_EXECUTABLE_ARCH}"
+    - echo "container_kernel=$(uname -m)"
+
+    - python --version
+    - python -m pip --version
+
+    # C host-test toolchain
+    - apt-get update
+    - apt-get install -y --no-install-recommends build-essential git ca-certificates
+    - rm -rf /var/lib/apt/lists/*
+
+    # ★ 현재 빠져 있는 부분
+    - python -m pip install --no-cache-dir "pytest==8.3.5"
+    - python -m pytest --version
+
+    - gcc --version | head -n 1
+    - git --version
+
+    - mkdir -p product reports logs
+
+    - |
+      rm -rf product/EVSE-Application
+
+      git init product/EVSE-Application
+
+      git -C product/EVSE-Application \
+        remote add origin "${EVSE_PRODUCT_REPO}"
+
+      git -C product/EVSE-Application \
+        fetch --depth 1 \
+        origin "${EVSE_PRODUCT_REF}"
+
+      git -C product/EVSE-Application \
+        checkout --detach FETCH_HEAD
+
+      ACTUAL_REF="$(
+        git -C product/EVSE-Application rev-parse HEAD
+      )"
+
+      test "${ACTUAL_REF}" = "${EVSE_PRODUCT_REF}"
+
+      echo "EVSE_PRODUCT_REF=${ACTUAL_REF}" \
+        | tee reports/evse-product-baseline.txt
+
+  script:
+    - |
+      set -o pipefail
+
+      EVSE_PRODUCT_DIR="$CI_PROJECT_DIR/product/EVSE-Application" \
+      python -m pytest \
+        -v \
+        -s \
+        tests/host/evse/test_evse_relay_host.py \
+        --junitxml=reports/evse-relay-host.xml \
+        2>&1 | tee logs/evse-relay-host.log
+
+  artifacts:
+    when: always
+    expire_in: 30 days
+
+    reports:
+      junit:
+        - reports/evse-relay-host.xml
+
+    paths:
+      - reports/
+      - logs/
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^test\/BEOG-17-/'
+    - if: '$CI_COMMIT_BRANCH =~ /^fix\/BEOG-50-/'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - when: never
+# -----------------------------------------------------------------------------
+# 4) Verify the image that was approved and published - automatic after build
+# -----------------------------------------------------------------------------
+verify_rpi_qa_image:
+  stage: test
+  image: "${RPI_QA_IMAGE}"
+
+  tags:
+    - rpi-docker
+    - armhf
+    - armv7
+    - python-test
+
+  script:
+    - mkdir -p reports
+    - file /usr/local/bin/python
+    - dpkg --print-architecture
+    - getconf LONG_BIT
+    - python --version
+    - pytest --version
+    - python -c 'import can, serial; print("python-can and pyserial import PASS")'
+
+    - |
+      python - <<'PY'
+      import struct
+
+      bits = struct.calcsize("P") * 8
+      print(f"python_bits={bits}")
+
+      if bits != 32:
+          raise SystemExit(f"Expected 32-bit Python, actual={bits}")
+
+      print("RESULT=PASS verify_rpi_qa_image")
+      PY
+
+    - |
+      {
+        echo "test_id=TC-INFRA-RPI-002"
+        echo "result=PASS"
+        echo "image=${RPI_QA_IMAGE}"
+        echo "commit=${CI_COMMIT_SHA}"
+      } > reports/rpi-qa-image-verify.txt
+
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - reports/rpi-qa-image-verify.txt
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      changes:
+        - docker/Dockerfile.rpi-qa
+        - .dockerignore
+      when: on_success
+
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - docker/Dockerfile.rpi-qa
+        - .dockerignore
+      when: on_success
+
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: on_success
+
+    - when: never
+
+# -----------------------------------------------------------------------------
+# 5) Physical STM32F429ZI LED HIL - MANUAL
+#
+# This job intentionally remains manual. A human must confirm that the bench
+# wiring, target board, ST-Link, and external circuits are safe before the job.
+# -----------------------------------------------------------------------------
+evse_led_register_smoke:
+  stage: hil
+
+  tags:
+    - rpi-shell
+    - hil
+    - bench-01
+    - stm32f429
+    - stlink
+
+  resource_group: bench-01
+  interruptible: false
+
+  manual_confirmation: "STM32F429ZI 실제 보드의 GPIO/LED를 OpenOCD로 제어합니다. 보드·ST-Link·외부 배선이 안전한지 확인했습니까?"
+
+  variables:
+    OPENOCD_INTERFACE_CFG: "interface/stlink.cfg"
+    OPENOCD_TARGET_CFG: "target/stm32f4x.cfg"
+
+  script:
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "host=$(hostname)"
+    - echo "architecture=$(uname -m)"
+    - openocd --version
+    - python3 --version
+    - mkdir -p reports logs
+
+    - |
+      set -o pipefail
+
+      python3 -m pytest \
+        -v \
+        -s \
+        tests/hil/evse/test_evse_led_register_smoke.py \
+        --junitxml=reports/evse-led-smoke.xml \
+        2>&1 |
+      tee logs/evse-led-smoke.log
+
+  artifacts:
+    when: always
+    expire_in: 30 days
+    reports:
+      junit:
+        - reports/evse-led-smoke.xml
+    paths:
+      - reports/
+      - logs/
+
+  rules:
+    # develop: optional manual smoke test; not running it does not block normal
+    # development.
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+
+    # default/main: manual release gate; must be executed to complete the gate.
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: true
+
+    - when: never
+
+# -----------------------------------------------------------------------------
+# BEOG-17 B) TC-EVSE-REL-001 PE11 relay Safe-Off HIL smoke - MANUAL
+#
+# Canonical names:
+#   source : tests/hil/evse/test_evse_relay_pe11_smoke.py
+#   job    : evse_relay_pe11_smoke
+#   junit  : reports/evse-relay-pe11-smoke.xml
+#   log    : logs/evse-relay-pe11-smoke.log
+# -----------------------------------------------------------------------------
+evse_relay_pe11_smoke:
+  stage: hil
+
+  tags:
+    - rpi-shell
+    - hil
+    - bench-01
+    - stm32f429
+    - stlink
+
+  resource_group: bench-01
+  interruptible: false
+
+  manual_confirmation: "BEOG-17 TC-EVSE-REL-001: NUCLEO-F429ZI에 의도한 EVSE baseline firmware가 flash되어 있고 PE11에 relay coil/HV가 직접 연결되지 않았는지 확인했습니까?"
+
+  variables:
+    OPENOCD_BOARD_CFG: "board/st_nucleo_f4.cfg"
+    OPENOCD_ADAPTER_KHZ: "1000"
+
+  before_script:
+    - echo "runner=${CI_RUNNER_DESCRIPTION}"
+    - echo "host=$(hostname)"
+    - echo "qa_commit=${CI_COMMIT_SHA}"
+    - echo "evse_product_ref=${EVSE_PRODUCT_REF}"
+    - id
+    - openocd --version
+    - python3 --version
+    - mkdir -p reports logs
+    - |
+      lsusb | tee logs/lsusb.txt
+      grep -qi '0483:374b' logs/lsusb.txt
+    - |
+      set -o pipefail
+      openocd \
+        -f "${OPENOCD_BOARD_CFG}" \
+        -c "adapter speed ${OPENOCD_ADAPTER_KHZ}; init; reset halt; shutdown" \
+        2>&1 | tee logs/openocd-preflight.log
+
+  script:
+    - |
+      {
+        echo "test_id=TC-EVSE-REL-001"
+        echo "jira=BEOG-17"
+        echo "qa_commit=${CI_COMMIT_SHA}"
+        echo "pipeline=${CI_PIPELINE_ID}"
+        echo "job=${CI_JOB_ID}"
+        echo "evse_product_ref=${EVSE_PRODUCT_REF}"
+        echo "target=NUCLEO-F429ZI"
+        echo "mcu=STM32F429ZI"
+        echo "bench=bench-01"
+      } > reports/evse-relay-pe11-metadata.txt
+    - |
+      set -o pipefail
+      python3 -m pytest \
+        -v \
+        -s \
+        tests/hil/evse/test_evse_relay_pe11_smoke.py \
+        --junitxml=reports/evse-relay-pe11-smoke.xml \
+        2>&1 | tee logs/evse-relay-pe11-smoke.log
+
+  artifacts:
+    when: always
+    expire_in: 30 days
+    reports:
+      junit:
+        - reports/evse-relay-pe11-smoke.xml
+    paths:
+      - reports/
+      - logs/
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^test\/BEOG-17-/'
+      when: manual
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: true
+    - when: never
