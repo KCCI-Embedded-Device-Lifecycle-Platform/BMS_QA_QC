@@ -1,0 +1,21 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+minversion = "8.0"
+addopts = "-ra --strict-markers"
+testpaths = ["tests", "hil/tests"]
+python_files = ["test_*.py"]
+# 기존 markers, addopts 등 설정은 그대로 유지
+markers = [
+  "host: host-side unit/component verification",
+  "hil: requires approved physical HIL equipment",
+  "destructive: may reset, flash, power-cycle, or disturb a CAN bus",
+  "gap: requirement or product contract is not approved",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["tests/host/**/mocks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
