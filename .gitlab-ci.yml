@@ -12,6 +12,7 @@ workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+    - if: '$CI_COMMIT_BRANCH =~ /^fix\//'
     - if: '$CI_COMMIT_BRANCH =~ /^test\//'
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -380,6 +381,7 @@ evse_relay_host_unit:
 
   rules:
     - if: '$CI_COMMIT_BRANCH =~ /^test\/BEOG-17-/'
+    - if: '$CI_COMMIT_BRANCH =~ /^fix\/BEOG-50-/'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - when: never

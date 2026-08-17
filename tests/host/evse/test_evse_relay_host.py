@@ -61,9 +61,12 @@ def test_hw_gpio_relay_active_level_mapping() -> None:
         "-Wextra",
         "-Werror",
         "-pedantic",
+        # U002 verifies the product hw_gpio.c contract, so its public header
+        # must win over the same-named input mock. The mock path still
+        # supplies main.h and HAL boundary declarations.
+        "-I", str(PRODUCT / "MyApp/Hardware"),
         "-I", str(QA_ROOT / "tests/host/evse/mocks"),
         "-I", str(PRODUCT / "MyApp/Common"),
-        "-I", str(PRODUCT / "MyApp/Hardware"),
         str(QA_ROOT / "tests/host/evse/test_hw_gpio_relay.c"),
         str(PRODUCT / "MyApp/Hardware/hw_gpio.c"),
         "-o", str(exe),
