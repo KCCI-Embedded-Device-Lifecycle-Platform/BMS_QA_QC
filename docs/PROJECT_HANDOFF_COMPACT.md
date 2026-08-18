@@ -29,8 +29,8 @@ Source repos have no authoritative GitLab CI; this QA repo pins, clones, builds,
 
 ## Implemented and verified
 
-- MR: `https://gitlab.com/bms-evse-ota-project/stm32-bms-evse-ota-ga-hil/-/merge_requests/1` targeting `develop`.
-- Pre-handoff MR pipeline PASS: `2767725858` at `7227c6ad61a642fb83b354461c9b61477863a7d1`.
+- MR !1 merged into `develop`; merge SHA `508724afeffc142b599b0dfa306a6359e826f7ec`.
+- Merge pipeline `2767778315`: all automatic Host/static/infra jobs PASS; artifact/HIL jobs remain manual by design.
 - Fixed: QA imports/API mocks, BMS empty debug macro `-Werror`, OTA app-start requirement constant, EVSE permit-loss setup, JUnit/evidence capture, transient GitLab `get_sources` retry.
 - Evidence collector avoids remote URLs/tokens: `tools/capture_qa_evidence.sh`.
 - Local quality gate: 7 PASS; 8 expected skips (3 OTA requirement gaps, 5 Gateway contract-waiting). HIL: 15 cases collect successfully; collection is not execution PASS.
@@ -57,7 +57,7 @@ Source repos have no authoritative GitLab CI; this QA repo pins, clones, builds,
 
 ## Next actions
 
-1. Confirm MR !1 merged into `develop`; add merge SHA/pipeline to BEOG-50/90/92 and close only after PASS.
+1. Add merge SHA/pipeline evidence to BEOG-50/90/92; close only after reviewer acceptance.
 2. Fix `BEOG-51` in EVSE product repo; update approved SHA deliberately; run `qa_product_artifacts` and close `BEOG-89` only on manifest PASS.
 3. On Pi, recreate venv from `requirements-qa.txt`, copy `hil/fixtures/config.example.json` to an untracked bench config, record power-off termination resistance, then run manual `qa_hil_can_infra` on `develop`.
 4. After artifact/target identity PASS, run `qa_hil_can_start_stop` for `0x201 → BMS PA8` and then timeout/fault safe-off. OTA erase/update is last.
