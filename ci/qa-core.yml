@@ -8,6 +8,7 @@ variables:
 .qa_core_rules:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^(feature|fix|test)\//'
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - when: never
@@ -23,8 +24,9 @@ qa_static:
     - python tools/generate_jira_catalog.py
     - git diff --exit-code -- docs/jira_export
     - python -m compileall -q hil tests tools
+    - python -c "import hil; import hil.report_junit"
     - ruff check hil tests/host/bms tests/host/common tests/host/evse/test_evse_core_host.py tests/host/ota tests/quality tools --ignore E501
-    - pytest tests/quality -m "host or gap" --junitxml=reports/static/junit.xml
+    - python -m pytest tests/quality -m "host or gap" --junitxml=reports/static/junit.xml
   artifacts:
     when: always
     reports:
@@ -49,7 +51,7 @@ qa_host_tests:
     EVSE_PRODUCT_DIR: "$CI_PROJECT_DIR/.products/EVSE-Application"
     OTA_BOOT_DIR: "$CI_PROJECT_DIR/.products/ota-platform/EVSE_BOOT/EVSE_BOOT"
   script:
-    - pytest tests/host/bms tests/host/evse/test_evse_core_host.py tests/host/ota -m host --junitxml=reports/host/junit.xml
+    - python -m pytest tests/host/bms tests/host/evse/test_evse_core_host.py tests/host/ota -m host --junitxml=reports/host/junit.xml
   artifacts:
     when: always
     reports:
@@ -91,9 +93,12 @@ qa_product_artifacts:
   # staging boundary at 0x08100000.  Keep the P0 gate visible and blocking when
   # selected, without making unrelated Host/traceability pipelines red.
   rules:
+    - if: '$RUN_PRODUCT_ARTIFACTS == "1" || $RUN_HIL == "1"'
+      when: on_success
+      allow_failure: false
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
       when: manual
-      allow_failure: false
+      allow_failure: true
     - when: never
 
 qa_hil_can_infra:

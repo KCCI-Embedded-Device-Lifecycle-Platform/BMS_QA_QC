@@ -144,14 +144,15 @@ static bool tc_evse_safe_002(void)
     evse_status_t status;
     memset(&status, 0, sizeof(status));
     evse_fsm_init(&status);
-    status.state = EVSE_STATE_CHARGE_READY;
+    /* relay_command_on is reachable only after entering CHARGING. */
+    status.state = EVSE_STATE_CHARGING;
     status.inputs.connector_connected = true;
     status.bms.online = true;
     status.bms.charge_permit = false;
     status.relay_command_on = true;
     evse_fsm_step(&status, EVSE_EVENT_NONE);
     CHECK(!status.relay_command_on);
-    CHECK(status.state != EVSE_STATE_CHARGING);
+    CHECK(status.state == EVSE_STATE_FAULT);
     return true;
 }
 

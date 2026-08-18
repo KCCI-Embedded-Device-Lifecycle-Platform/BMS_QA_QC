@@ -253,8 +253,8 @@
       "priority": "P0",
       "method": "Decision",
       "precondition": "Pinned product SHA and independent QA oracle are available.",
-      "stimulus": "Set charge-ready/relay request with permit false.",
-      "expected": "Relay command remains OFF and CHARGING is not entered.",
+      "stimulus": "Start in CHARGING with relay ON, then remove charge permit.",
+      "expected": "Relay command turns OFF and the FSM enters FAULT.",
       "automation": "tests/host/evse/test_evse_core_host.py",
       "disposition": "READY"
     },

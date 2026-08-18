@@ -12,6 +12,7 @@ workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+    - if: '$CI_COMMIT_BRANCH =~ /^fix\//'
     - if: '$CI_COMMIT_BRANCH =~ /^test\//'
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -24,6 +25,11 @@ variables:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONDONTWRITEBYTECODE: "1"
   PYTHONUNBUFFERED: "1"
+
+  # The self-managed runner occasionally loses GitLab connectivity during the
+  # pre-script get_sources stage. Retry only that stage; do not retry test
+  # script failures because doing so could hide a real product regression.
+  GET_SOURCES_ATTEMPTS: "3"
 
   # Immutable tag. Do not overwrite one fixed tag for every commit.
   RPI_QA_IMAGE: "${CI_REGISTRY_IMAGE}/rpi-qa:armv7-${CI_COMMIT_SHORT_SHA}"
@@ -380,6 +386,7 @@ evse_relay_host_unit:
 
   rules:
     - if: '$CI_COMMIT_BRANCH =~ /^test\/BEOG-17-/'
+    - if: '$CI_COMMIT_BRANCH =~ /^fix\/BEOG-50-/'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - when: never

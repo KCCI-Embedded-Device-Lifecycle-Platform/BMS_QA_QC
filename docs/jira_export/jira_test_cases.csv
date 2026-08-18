@@ -198,8 +198,8 @@ Method: Decision
 Disposition: READY
 
 Precondition: Pinned product SHA and independent QA oracle are available.
-Stimulus/Steps: Set charge-ready/relay request with permit false.
-Expected independent oracle: Relay command remains OFF and CHARGING is not entered.
+Stimulus/Steps: Start in CHARGING with relay ON, then remove charge permit.
+Expected independent oracle: Relay command turns OFF and the FSM enters FAULT.
 Automation: tests/host/evse/test_evse_core_host.py
 
 QA/QC: A log or CAN command is not physical-output evidence. Record the required observation layer and classify gaps/blockers explicitly.",Highest,"qa,aspice,evse,swe-5"
