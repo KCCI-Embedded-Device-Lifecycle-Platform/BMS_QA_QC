@@ -57,6 +57,28 @@ def test_tc_infra_cm_001(tmp_path: Path) -> None:
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert json.loads(manifest.read_text(encoding="utf-8"))["source_sha"] == "a" * 40
 
+    linker_file = tmp_path / "STM32F429xx_FLASH.ld"
+    linker_file.write_text(
+        "MEMORY\n{\n  FLASH (rx) : ORIGIN = 0x08020000, LENGTH = 896K\n}\n",
+        encoding="utf-8",
+    )
+    completed_linker = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools/check_linker_layout.py"),
+            "--linker",
+            str(tmp_path / "STM32F429XX_FLASH.ld"),
+            "--origin",
+            "0x08020000",
+            "--end",
+            "0x08100000",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed_linker.returncode == 0, completed_linker.stdout + completed_linker.stderr
+
 
 @pytest.mark.host
 def test_tc_infra_pipe_001() -> None:

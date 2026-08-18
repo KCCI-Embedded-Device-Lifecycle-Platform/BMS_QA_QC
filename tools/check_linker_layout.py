@@ -12,6 +12,17 @@ FLASH = re.compile(
 )
 
 
+def find_linker_file(path: Path) -> Path:
+    if path.is_file():
+        return path
+    if path.parent.is_dir():
+        target_lower = path.name.lower()
+        for candidate in path.parent.iterdir():
+            if candidate.is_file() and candidate.name.lower() == target_lower:
+                return candidate
+    return path
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--linker", required=True, type=Path)
@@ -19,7 +30,11 @@ def main() -> int:
     parser.add_argument("--end", required=True, type=lambda value: int(value, 0))
     args = parser.parse_args()
 
-    text = args.linker.read_text(encoding="utf-8", errors="replace")
+    linker_file = find_linker_file(args.linker)
+    if not linker_file.is_file():
+        raise SystemExit(f"linker script not found: {args.linker}")
+
+    text = linker_file.read_text(encoding="utf-8", errors="replace")
     match = FLASH.search(text)
     if match is None:
         raise SystemExit("cannot locate FLASH ORIGIN/LENGTH in linker script")
@@ -36,7 +51,7 @@ def main() -> int:
         raise SystemExit(
             f"FLASH end 0x{origin + length:08X} overlaps reserved region at 0x{args.end:08X}"
         )
-    print(f"PASS linker origin=0x{origin:08X} end=0x{origin + length:08X}")
+    print(f"PASS linker ({linker_file.name}) origin=0x{origin:08X} end=0x{origin + length:08X}")
     return 0
 
 

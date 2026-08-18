@@ -16,3 +16,14 @@ mkdir -p .products
 clone_at_ref "$BMS_PRODUCT_REPO" "$BMS_PRODUCT_REF" .products/BMS
 clone_at_ref "$EVSE_PRODUCT_REPO" "$EVSE_CAN_PRODUCT_REF" .products/EVSE-Application
 clone_at_ref "$OTA_PRODUCT_REPO" "$OTA_PRODUCT_REF" .products/ota-platform
+
+# Ensure linker script filename case compatibility on Linux
+for dir in .products/EVSE-Application .products/ota-platform/EVSE_BOOT; do
+  if [ -d "$dir" ]; then
+    if [ -f "$dir/STM32F429xx_FLASH.ld" ] && [ ! -f "$dir/STM32F429XX_FLASH.ld" ]; then
+      cp -p "$dir/STM32F429xx_FLASH.ld" "$dir/STM32F429XX_FLASH.ld"
+    elif [ -f "$dir/STM32F429XX_FLASH.ld" ] && [ ! -f "$dir/STM32F429xx_FLASH.ld" ]; then
+      cp -p "$dir/STM32F429XX_FLASH.ld" "$dir/STM32F429xx_FLASH.ld"
+    fi
+  fi
+done

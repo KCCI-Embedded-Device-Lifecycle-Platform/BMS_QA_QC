@@ -89,9 +89,8 @@ qa_product_artifacts:
     when: always
     paths: [artifacts/]
     expire_in: 30 days
-  # The current EVSE linker region reaches 0x08200000 and overlaps the OTA
-  # staging boundary at 0x08100000.  Keep the P0 gate visible and blocking when
-  # selected, without making unrelated Host/traceability pipelines red.
+  # The EVSE application must end before OTA staging at 0x08100000.
+  # Keep this selected gate blocking until the product linker and artifact both comply.
   rules:
     - if: '$RUN_PRODUCT_ARTIFACTS == "1" || $RUN_HIL == "1"'
       when: on_success
