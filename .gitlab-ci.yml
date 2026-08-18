@@ -26,6 +26,11 @@ variables:
   PYTHONDONTWRITEBYTECODE: "1"
   PYTHONUNBUFFERED: "1"
 
+  # The self-managed runner occasionally loses GitLab connectivity during the
+  # pre-script get_sources stage. Retry only that stage; do not retry test
+  # script failures because doing so could hide a real product regression.
+  GET_SOURCES_ATTEMPTS: "3"
+
   # Immutable tag. Do not overwrite one fixed tag for every commit.
   RPI_QA_IMAGE: "${CI_REGISTRY_IMAGE}/rpi-qa:armv7-${CI_COMMIT_SHORT_SHA}"
 
