@@ -35,7 +35,9 @@ if command -v hostnamectl >/dev/null 2>&1; then
     record host hostnamectl
 fi
 record git-status git status --short --branch
-record git-remotes git remote -v
+# Remote URLs can contain embedded credentials in some installations.  Record
+# only the configured remote names; provenance comes from the pinned manifest.
+record git-remotes git remote
 
 for tool in python3 gcc arm-none-eabi-gcc docker gitlab-runner; do
     if command -v "$tool" >/dev/null 2>&1; then
