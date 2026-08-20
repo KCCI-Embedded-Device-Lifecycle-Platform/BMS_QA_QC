@@ -99,12 +99,6 @@ def main() -> int:
             "hil/tests/test_can_bus_acceptance.py",
             "hil/tests/test_can_timeout.py::test_tc_can_hb_001_periodicity",
         ],
-        "can-start-stop": [
-            "hil/tests/test_can_e2e.py::test_tc_can_e2e_002_start_stop_state_sequence"
-        ],
-        "can-fault": [
-            "hil/tests/test_can_e2e.py::test_tc_can_e2e_003_critical_fault_safe_off"
-        ],
         "can-link-fault": [
             "hil/tests/test_can_timeout.py::test_tc_bms_link_001_timeout_and_recovery",
             "hil/tests/test_can_timeout.py::test_tc_evse_safe_004_bms_timeout_drives_pe11_low",

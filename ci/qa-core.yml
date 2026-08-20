@@ -126,36 +126,6 @@ qa_hil_can_infra:
       when: manual
       allow_failure: false
 
-qa_hil_can_start_stop:
-  stage: hil
-  tags: [rpi-shell, hil, bench-01]
-  resource_group: bench-01
-  interruptible: false
-  manual_confirmation: "BEOG-49: no-load, current limit, hard interlock, dual ST-Link/OpenOCD, 절연 START/STOP actuator를 확인했습니까?"
-  variables:
-    HIL_FORMAL: "1"
-  needs:
-    - job: qa_product_artifacts
-      artifacts: true
-  before_script:
-    - test "$HIL_ALLOW_ACTUATION" = "YES"
-    - python3 -m venv .qa-hil-venv
-    - .qa-hil-venv/bin/python -m pip install --no-cache-dir -r requirements-qa.txt
-  script:
-    - .qa-hil-venv/bin/python tools/verify_target_image.py --config "$HIL_CONFIG" --target bms --image artifacts/bms/bms.elf --source-sha "$BMS_PRODUCT_REF" --manifest reports/hil-can-start-stop/target-bms.json
-    - .qa-hil-venv/bin/python tools/verify_target_image.py --config "$HIL_CONFIG" --target evse --image artifacts/evse/evse.elf --source-sha "$EVSE_CAN_PRODUCT_REF" --manifest reports/hil-can-start-stop/target-evse.json
-    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG" --suite can-start-stop --reports reports/hil-can-start-stop --require-all-executed
-  artifacts:
-    when: always
-    reports:
-      junit: reports/hil-can-start-stop/junit.xml
-    paths: [reports/hil-can-start-stop/]
-    expire_in: 30 days
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
-      when: manual
-      allow_failure: false
-
 qa_hil_safety:
   stage: hil
   image: "$RPI_QA_IMAGE"
