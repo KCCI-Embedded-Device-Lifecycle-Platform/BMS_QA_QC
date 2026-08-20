@@ -10,12 +10,19 @@ QA repository: `stm32-bms-evse-ota-ga-hil`. Ubuntu Docker Runner performs static
 
 | Product | SHA / canonical path |
 |---|---|
-| BMS F446 | `83b1fdf98fa8c5eef792533446826498c36ff030` |
+| BMS F446 | `d9f96077c1326b0815499371a9392cf983e82026` (INA226/OLED update; CAN contract unchanged) |
 | EVSE F429 CAN | `06f6111e2a4072350ae73af28b3a54e3b6a95a8d` |
 | EVSE bench-safe | `a133fbf003be722dc1a1d879e5f7e98639e82e11` |
 | OTA platform | `b810605e2a0e610270d4727d95eb108f7eda6a65`; boot path `EVSE_BOOT/EVSE_BOOT` |
+| Standalone EVSE_BOOT | `d2bba80adc109b6f1699143eb1ea8cad4de99c05`; reference-only, not the canonical OTA build path |
 
 Source repos have no authoritative GitLab CI; this QA repo pins, clones, builds, tests and records provenance.
+
+EVSE upstream branch `agent/evse-wifi-rtos-safety` was observed at
+`05bc349a98170ae9e742ea9d393b3b9218bd0ab0`. It is not promoted to the CAN
+candidate because it removes PF14 connector semantics, reserves fault bit 1,
+changes 0x200 byte 2 to BMS-online, and changes the FSM API/timing. Jira/ICD
+review is required before adapting safety or HIL verdicts to that behavior.
 
 ## Decisions that must not drift
 

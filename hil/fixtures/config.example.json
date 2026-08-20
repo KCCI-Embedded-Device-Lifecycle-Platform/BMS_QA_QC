@@ -1,6 +1,6 @@
 {
   "product_baselines": {
-    "bms_sha": "83b1fdf98fa8c5eef792533446826498c36ff030",
+    "bms_sha": "d9f96077c1326b0815499371a9392cf983e82026",
     "evse_safe_sha": "a133fbf003be722dc1a1d879e5f7e98639e82e11",
     "evse_can_sha": "06f6111e2a4072350ae73af28b3a54e3b6a95a8d",
     "ota_platform_sha": "b810605e2a0e610270d4727d95eb108f7eda6a65"

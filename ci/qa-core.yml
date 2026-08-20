@@ -1,6 +1,6 @@
 variables:
   BMS_PRODUCT_REPO: "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/BMS.git"
-  BMS_PRODUCT_REF: "83b1fdf98fa8c5eef792533446826498c36ff030"
+  BMS_PRODUCT_REF: "d9f96077c1326b0815499371a9392cf983e82026"
   EVSE_CAN_PRODUCT_REF: "06f6111e2a4072350ae73af28b3a54e3b6a95a8d"
   OTA_PRODUCT_REPO: "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/ota-platform.git"
   OTA_PRODUCT_REF: "b810605e2a0e610270d4727d95eb108f7eda6a65"
@@ -213,16 +213,25 @@ qa_hil_can_e2e_usb:
   tags: [rpi-shell, hil, bench-01]
   resource_group: bench-01
   interruptible: false
-  script:
-    - echo "Executing CAN E2E Test over USB Analyzer (/dev/ttyUSB1)"
-    - mkdir -p reports
+  variables:
+    # Passive infrastructure acceptance only. This job does not flash either
+    # target, actuate relays, or claim that the configured product SHA is on HW.
+    HIL_FORMAL: "0"
+    # Current bench mapping. A protected GitLab variable with the same name can
+    # override it when udev enumeration changes; the effective value is archived.
+    HIL_CAN_CHANNEL: "/dev/ttyUSB1"
+  before_script:
+    - test -n "$HIL_CONFIG"
     - python3 -m venv .qa-hil-venv
-    - .qa-hil-venv/bin/python -m pip install --no-cache-dir pytest python-can pyserial
-    - .qa-hil-venv/bin/python -m pytest -s -v tests/hil/test_hil_can_e2e.py 2>&1 | tee reports/can_e2e_log.txt
-    - .qa-hil-venv/bin/python tests/hil/test_hil_integration_seeed.py --channel /dev/ttyUSB1 2>&1 | tee -a reports/can_e2e_log.txt
+    - .qa-hil-venv/bin/python -m pip install --no-cache-dir -r requirements-qa.txt
+  script:
+    - echo "Executing passive BMS-EVSE CAN acceptance using HIL_CONFIG"
+    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG" --can-channel "$HIL_CAN_CHANNEL" --suite can-infra --reports reports/hil-can-e2e-usb --require-all-executed
   artifacts:
     when: always
-    paths: [reports/can_e2e_log.txt]
+    reports:
+      junit: reports/hil-can-e2e-usb/junit.xml
+    paths: [reports/hil-can-e2e-usb/]
     expire_in: 30 days
   rules:
     - if: '$CI_COMMIT_BRANCH =~ /^feature\//'

@@ -30,6 +30,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument(
+        "--can-channel",
+        help=(
+            "Explicit CAN device override for the current runner. The effective "
+            "configuration is persisted with the evidence."
+        ),
+    )
+    parser.add_argument(
         "--suite",
         choices=[
             "can",
@@ -57,9 +64,17 @@ def main() -> int:
     args = parser.parse_args()
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
+    if args.can_channel:
+        config.setdefault("can", {})["channel"] = args.can_channel
     args.reports.mkdir(parents=True, exist_ok=True)
+    effective_config = args.reports / "effective-config.json"
+    effective_config.write_text(
+        json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     metadata = {
         "config_sha256": sha256(args.config),
+        "effective_config_sha256": sha256(effective_config),
+        "can": config.get("can", {}),
         "platform": platform.platform(),
         "python": sys.version,
         "qa_commit": os.getenv("CI_COMMIT_SHA", "local"),
@@ -109,7 +124,7 @@ def main() -> int:
     ]
     environment = os.environ.copy()
     environment["HIL_ENABLED"] = "1"
-    environment["HIL_CONFIG"] = str(args.config.resolve())
+    environment["HIL_CONFIG"] = str(effective_config.resolve())
     returncode = subprocess.run(command, env=environment, check=False).returncode
     if returncode != 0 or args.allow_all_skipped:
         return returncode

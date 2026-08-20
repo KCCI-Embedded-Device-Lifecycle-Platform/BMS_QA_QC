@@ -4,16 +4,18 @@
   "products": {
     "bms": {
       "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/BMS.git",
-      "candidate_ref": "83b1fdf98fa8c5eef792533446826498c36ff030",
+      "candidate_ref": "d9f96077c1326b0815499371a9392cf983e82026",
       "target": "STM32F446RET6",
       "qualification_status": "UNDER_REVIEW"
     },
     "evse": {
       "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/EVSE-Application.git",
       "candidate_ref": "06f6111e2a4072350ae73af28b3a54e3b6a95a8d",
+      "observed_upstream_ref": "05bc349a98170ae9e742ea9d393b3b9218bd0ab0",
       "bench_safe_ref": "a133fbf003be722dc1a1d879e5f7e98639e82e11",
       "target": "STM32F429ZIT6",
-      "qualification_status": "ACTUATION_INTERLOCK_REQUIRED"
+      "qualification_status": "ACTUATION_INTERLOCK_REQUIRED",
+      "upstream_disposition": "REQUIREMENT_REVIEW_REQUIRED_CONNECTOR_SEMANTICS"
     },
     "ota": {
       "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/ota-platform.git",
@@ -21,6 +23,13 @@
       "canonical_path": "EVSE_BOOT/EVSE_BOOT",
       "target": "STM32F429ZIT6",
       "qualification_status": "UNDER_REVIEW"
+    },
+    "ota_boot_standalone": {
+      "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/EVSE_BOOT.git",
+      "candidate_ref": "d2bba80adc109b6f1699143eb1ea8cad4de99c05",
+      "canonical_path": null,
+      "target": "STM32F429ZIT6",
+      "qualification_status": "REFERENCE_ONLY_NON_CANONICAL"
     },
     "gateway": {
       "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/ota-platform.git",
