@@ -9,6 +9,8 @@
     "interface": "seeedstudio",
     "channel": "/dev/ttyUSB0",
     "bitrate": 500000,
+    "serial_baudrate": 2000000,
+    "timeout_s": 0.1,
     "frame_type": "STD",
     "operation_mode": "normal"
   },

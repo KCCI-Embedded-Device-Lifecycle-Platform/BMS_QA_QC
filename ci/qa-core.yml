@@ -226,6 +226,8 @@ qa_hil_can_e2e_usb:
     - python3 -m venv .qa-hil-venv
     - .qa-hil-venv/bin/python -m pip install --no-cache-dir -r requirements-qa.txt
   script:
+    - mkdir -p reports/hil-can-e2e-usb
+    - .qa-hil-venv/bin/python tools/can_usb_preflight.py --selected "$HIL_CAN_CHANNEL" --output reports/hil-can-e2e-usb/usb-preflight.json
     - echo "Executing passive BMS-EVSE CAN acceptance using HIL_CONFIG"
     - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG_PATH" --can-channel "$HIL_CAN_CHANNEL" --suite can-passive --reports reports/hil-can-e2e-usb --require-all-executed
   artifacts:

@@ -119,6 +119,12 @@ class PythonCanAdapter(CanAdapter):
                 bitrate=bitrate,
                 **kwargs,
             )
+            # A previous interrupted Runner job can leave complete protocol
+            # frames in the Seeed serial receive buffer.  Start every evidence
+            # window from a known boundary, matching the proven bench utility.
+            flush = getattr(self._bus, "flush_buffer", None)
+            if callable(flush):
+                flush()
         except Exception as exc:  # python-can exposes backend-specific exception types.
             raise CanAdapterError(
                 f"cannot open python-can interface={interface!r} channel={channel!r}: {exc}"
@@ -183,5 +189,9 @@ def create_can_adapter(config: dict[str, Any]) -> CanAdapter:
         extra.update(
             frame_type=str(config.get("frame_type", "STD")),
             operation_mode=str(config.get("operation_mode", "normal")),
+            # This is the USB serial transport rate, not the 500 kbit/s CAN
+            # bus rate.  Seeed 114991193 bench reception was qualified at 2 Mbaud.
+            baudrate=int(config.get("serial_baudrate", 2_000_000)),
+            timeout=float(config.get("timeout_s", 0.1)),
         )
     return PythonCanAdapter(interface=interface, channel=channel, bitrate=bitrate, **extra)

@@ -30,6 +30,13 @@ as -1.99 A. The CAN gate verifies BMS positive LE packing and EVSE signed-negati
 decoding without accepting this off-by-one as an oracle; symmetric signed
 rounding requires a product change and regression case before closure.
 
+Pi HIL pipeline `2775269281` opened both previously tried Seeed paths but saw
+zero CAN frames.  The next revision aligns the formal adapter with the proven
+Samba initialization (`2,000,000` serial baud, `500,000` CAN bit/s, 100 ms
+backend timeout and stale-buffer flush) and archives a non-invasive USB mapping
+preflight.  A zero-frame result remains `BLOCKED_INFRA`; it is never converted
+to product PASS.
+
 ## Decisions that must not drift
 
 - Order: requirements/baseline → Host → artifact identity/layout → passive HIL → actuating HIL → OTA destructive HIL → System.
