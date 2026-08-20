@@ -51,7 +51,7 @@ qa_host_tests:
     EVSE_PRODUCT_DIR: "$CI_PROJECT_DIR/.products/EVSE-Application"
     OTA_BOOT_DIR: "$CI_PROJECT_DIR/.products/ota-platform/EVSE_BOOT/EVSE_BOOT"
   script:
-    - python -m pytest tests/host/bms tests/host/evse/test_evse_core_host.py tests/host/ota -m host --junitxml=reports/host/junit.xml
+    - python -m pytest -s tests/host/bms tests/host/evse/test_evse_core_host.py tests/host/ota -m host --junitxml=reports/host/junit.xml
   artifacts:
     when: always
     reports:

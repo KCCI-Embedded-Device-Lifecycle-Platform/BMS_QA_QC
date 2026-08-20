@@ -46,11 +46,40 @@ def compile_executable(
     return output
 
 
+
+import csv
+import sys
+from pathlib import Path
+
+# Provide a helper to get JIRA info
+def get_jira_info(test_id: str):
+    csv_path = Path(__file__).resolve().parent.parent.parent.parent / 'docs' / 'jira_export' / 'jira_export_issues.csv'
+    if not csv_path.exists():
+        return None, None
+    try:
+        with open(csv_path, 'r', encoding='utf-8', errors='ignore') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if len(row) >= 2 and test_id in row[0]:
+                    return row[1], row[0]
+    except Exception as e:
+        pass
+    return None, None
+
+
+
 def run_case(executable: Path, test_id: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    completed = subprocess.run(
         [str(executable), test_id],
         capture_output=True,
         text=True,
         check=False,
         timeout=20,
     )
+    if completed.returncode == 0:
+        issue, summary = get_jira_info(test_id)
+        if issue:
+            print(f"\n✅ [PASS] {issue} : {summary} (Test ID: {test_id})", file=sys.stderr)
+        else:
+            print(f"\n✅ [PASS] (Test ID: {test_id})", file=sys.stderr)
+    return completed
