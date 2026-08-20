@@ -207,3 +207,23 @@ qa_hil_ota_update:
       when: manual
       allow_failure: false
     - when: never
+
+qa_hil_can_e2e_usb:
+  stage: hil
+  tags: [rpi-shell, hil, bench-01]
+  resource_group: bench-01
+  interruptible: false
+  script:
+    - echo "Executing CAN E2E Test over USB Analyzer (/dev/ttyUSB0)"
+    - mkdir -p reports
+    - python3 -m venv .qa-hil-venv
+    - .qa-hil-venv/bin/python -m pip install --no-cache-dir pytest python-can pyserial
+    - .qa-hil-venv/bin/python -m pytest -s -v tests/hil/test_hil_can_e2e.py 2>&1 | tee reports/can_e2e_log.txt
+    - .qa-hil-venv/bin/python tests/hil/test_hil_integration_seeed.py --channel /dev/ttyUSB0 2>&1 | tee -a reports/can_e2e_log.txt
+  artifacts:
+    when: always
+    paths: [reports/can_e2e_log.txt]
+    expire_in: 30 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+      when: always
