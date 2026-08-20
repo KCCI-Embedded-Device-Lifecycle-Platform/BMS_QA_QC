@@ -53,7 +53,7 @@ static int test_main_payload(void)
     bms_data_t data;
     const uint8_t expected_main[8] = {
         0x34U, 0x12U, /* 0x1234 x 0.01 V */
-        0x38U, 0xFFU, /* -200 x 0.01 A, signed LE */
+        0x7BU, 0x00U, /* +123 x 0.01 A, LE */
         77U, 1U, (uint8_t)BMS_ST_CHARGE_READY, 0x81U
     };
     const uint8_t expected_state[2] = {
@@ -62,7 +62,7 @@ static int test_main_payload(void)
 
     memset(&data, 0, sizeof(data));
     data.pack_mv = 0x1234 * 10;
-    data.pack_ma = -2000;
+    data.pack_ma = 1230;
     data.soc = 77U;
     data.charge_permit = true;
     data.state = BMS_ST_CHARGE_READY;

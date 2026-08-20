@@ -24,6 +24,12 @@ candidate because it removes PF14 connector semantics, reserves fault bit 1,
 changes 0x200 byte 2 to BMS-online, and changes the FSM API/timing. Jira/ICD
 review is required before adapting safety or HIL verdicts to that behavior.
 
+BMS `d9f9607` CAN packing review found a separate product observation:
+`DIV_ROUND(-2000, 10)` evaluates to `-199`, so an exact -2.00 A input is encoded
+as -1.99 A. The CAN gate verifies BMS positive LE packing and EVSE signed-negative
+decoding without accepting this off-by-one as an oracle; symmetric signed
+rounding requires a product change and regression case before closure.
+
 ## Decisions that must not drift
 
 - Order: requirements/baseline → Host → artifact identity/layout → passive HIL → actuating HIL → OTA destructive HIL → System.
