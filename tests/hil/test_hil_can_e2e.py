@@ -5,6 +5,16 @@ try:
 except ImportError:
     can = None
 
+import glob
+
+def get_usb_can_port():
+    ports = glob.glob('/dev/ttyUSB*')
+    if ports:
+        # Sort to get the highest numbered one (usually the most recently plugged in)
+        ports.sort(reverse=True)
+        return ports[0]
+    return '/dev/ttyUSB0'
+
 # TC-HIL-CAN-3NODE-001 / BEOG-48
 # TC-SYS-EVSE-BMS-CHG-001 / BEOG-49
 
@@ -16,7 +26,7 @@ def test_beog_48_3node_can_acceptance():
     """
     bus = can.interface.Bus(
         interface='seeedstudio',
-        channel='/dev/ttyUSB0',
+        channel='/dev/ttyUSB1',
         baudrate=2_000_000,
         bitrate=500_000,
         operation_mode='normal',
@@ -54,7 +64,7 @@ def test_beog_49_evse_start_stop():
     """
     bus = can.interface.Bus(
         interface='seeedstudio',
-        channel='/dev/ttyUSB0',
+        channel='/dev/ttyUSB1',
         baudrate=2_000_000,
         bitrate=500_000,
         operation_mode='normal',
