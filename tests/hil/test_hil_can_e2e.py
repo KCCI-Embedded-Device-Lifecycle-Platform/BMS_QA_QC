@@ -14,7 +14,14 @@ def test_beog_48_3node_can_acceptance():
     [BEOG-48] 3-Node Bus Acceptance — BMS + EVSE + Raspberry Pi
     Verifies that BMS and EVSE are both broadcasting their expected periodic frames.
     """
-    bus = can.interface.Bus(channel='can0', bustype='socketcan')
+    bus = can.interface.Bus(
+        interface='seeedstudio',
+        channel='/dev/ttyUSB0',
+        baudrate=2_000_000,
+        bitrate=500_000,
+        operation_mode='normal',
+        timeout=0.1
+    )
     
     seen_bms_100 = False
     seen_evse_200 = False
@@ -45,7 +52,14 @@ def test_beog_49_evse_start_stop():
     Listens for the 0x201 START command from EVSE.
     Note: Requires manual or GPIO-triggered button press on EVSE PE13 during the 10s window.
     """
-    bus = can.interface.Bus(channel='can0', bustype='socketcan')
+    bus = can.interface.Bus(
+        interface='seeedstudio',
+        channel='/dev/ttyUSB0',
+        baudrate=2_000_000,
+        bitrate=500_000,
+        operation_mode='normal',
+        timeout=0.1
+    )
     
     seen_start = False
     
