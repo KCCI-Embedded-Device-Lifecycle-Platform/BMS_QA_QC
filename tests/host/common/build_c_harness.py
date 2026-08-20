@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import csv
 import os
 import shlex
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -47,22 +49,18 @@ def compile_executable(
 
 
 
-import csv
-import sys
-from pathlib import Path
-
 # Provide a helper to get JIRA info
 def get_jira_info(test_id: str):
     csv_path = Path(__file__).resolve().parent.parent.parent.parent / 'docs' / 'jira_export' / 'jira_export_issues.csv'
     if not csv_path.exists():
         return None, None
     try:
-        with open(csv_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(csv_path, encoding='utf-8', errors='ignore') as f:
             reader = csv.reader(f)
             for row in reader:
                 if len(row) >= 2 and test_id in row[0]:
                     return row[1], row[0]
-    except Exception as e:
+    except Exception:
         pass
     return None, None
 
