@@ -40,6 +40,7 @@ def main() -> int:
         "--suite",
         choices=[
             "can",
+            "can-passive",
             "can-infra",
             "can-start-stop",
             "can-fault",
@@ -87,6 +88,10 @@ def main() -> int:
 
     selectors = {
         "can": ["hil/tests/test_can_timeout.py", "hil/tests/test_can_e2e.py", "hil/tests/test_can_bus_acceptance.py"],
+        "can-passive": [
+            "hil/tests/test_can_bus_acceptance.py::test_tc_can_bus_001_node_visibility",
+            "hil/tests/test_can_timeout.py::test_tc_can_hb_001_periodicity",
+        ],
         # Infrastructure acceptance deliberately has no ECU actuation.  It can
         # establish that the Pi analyzer sees the approved bus, but it cannot
         # claim a product-level safety PASS.

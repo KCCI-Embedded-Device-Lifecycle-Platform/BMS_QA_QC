@@ -9,19 +9,17 @@ from hil.can_adapter import CanAdapter
 
 
 @pytest.mark.hil
-def test_tc_can_bus_001_three_node_acceptance(
-    can_adapter: CanAdapter, hil_config: dict[str, Any]
-) -> None:
-    """TC-CAN-BUS-001: both ECUs are visible on the approved 500 kbit/s bus.
-
-    Resistance is fixture evidence, not something SocketCAN can measure.  The
-    operator therefore records the DMM value in HIL_CONFIG before this test.
-    """
-
+def test_tc_can_bus_001_termination_evidence(hil_config: dict[str, Any]) -> None:
+    """TC-CAN-BUS-001: validate operator-recorded termination evidence."""
     resistance = hil_config.get("fixture", {}).get("termination_ohms")
     if resistance is None:
         pytest.skip("BLOCKED_INFRA: fixture.termination_ohms DMM evidence is missing")
     assert 54.0 <= float(resistance) <= 66.0
+
+
+@pytest.mark.hil
+def test_tc_can_bus_001_node_visibility(can_adapter: CanAdapter) -> None:
+    """TC-CAN-BUS-001: passively observe both product nodes without actuation."""
 
     seen_bms = False
     seen_evse = False

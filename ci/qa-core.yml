@@ -221,12 +221,13 @@ qa_hil_can_e2e_usb:
     # override it when udev enumeration changes; the effective value is archived.
     HIL_CAN_CHANNEL: "/dev/ttyUSB1"
   before_script:
-    - test -n "$HIL_CONFIG"
+    - export HIL_CONFIG_PATH="${HIL_CONFIG:-hil/fixtures/config.example.json}"
+    - test -f "$HIL_CONFIG_PATH"
     - python3 -m venv .qa-hil-venv
     - .qa-hil-venv/bin/python -m pip install --no-cache-dir -r requirements-qa.txt
   script:
     - echo "Executing passive BMS-EVSE CAN acceptance using HIL_CONFIG"
-    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG" --can-channel "$HIL_CAN_CHANNEL" --suite can-infra --reports reports/hil-can-e2e-usb --require-all-executed
+    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG_PATH" --can-channel "$HIL_CAN_CHANNEL" --suite can-passive --reports reports/hil-can-e2e-usb --require-all-executed
   artifacts:
     when: always
     reports:
