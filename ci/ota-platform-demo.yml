@@ -1,0 +1,151 @@
+.ota_demo_live_rules:
+  rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1" && $CI_COMMIT_REF_PROTECTED == "true"'
+    - when: never
+
+ota_api_contract_tests:
+  stage: validate
+  image: python:3.11-slim-bookworm
+  tags: [docker, qa-toolchain]
+  before_script:
+    - pip install --no-cache-dir -r requirements-qa.txt
+  script:
+    - mkdir -p reports/ota-contract
+    - python -m pytest -q tests/quality/test_ota_demo_pipeline.py --junitxml=reports/ota-contract/junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: reports/ota-contract/junit.xml
+    paths: [reports/ota-contract/]
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^(feature|fix|test)\//'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+    - when: never
+
+validate_ota_artifact_metadata:
+  extends: .ota_demo_live_rules
+  stage: ota_validate
+  image: python:3.11-slim-bookworm
+  tags: [docker, qa-toolchain]
+  script:
+    - mkdir -p reports/ota-demo
+    - >-
+      python tools/ota_demo_pipeline.py validate-artifact
+      --artifact-url "$OTA_ARTIFACT_DOWNLOAD_URL"
+      --artifact-token-env OTA_ARTIFACT_TOKEN
+      --artifact-id "$OTA_ARTIFACT_ID"
+      --artifact-name "$OTA_ARTIFACT_NAME"
+      --artifact-reference "$OTA_ARTIFACT_REFERENCE"
+      --expected-sha256 "$OTA_ARTIFACT_SHA256"
+      --target-version "$OTA_TARGET_VERSION"
+      --report reports/ota-demo/artifact.json
+  artifacts:
+    when: always
+    paths: [reports/ota-demo/artifact.json]
+    expire_in: 30 days
+
+check_ota_platform_health:
+  extends: .ota_demo_live_rules
+  stage: ota_validate
+  image: python:3.11-slim-bookworm
+  tags: [docker, qa-toolchain]
+  script:
+    - mkdir -p reports/ota-demo
+    - >-
+      python tools/ota_demo_pipeline.py check-health
+      --url "$OTA_PLATFORM_HEALTH_URL"
+      --token-env OTA_PLATFORM_API_TOKEN
+      --report reports/ota-demo/health.json
+  artifacts:
+    when: always
+    paths: [reports/ota-demo/health.json]
+    expire_in: 30 days
+
+create_ready_ota_campaign:
+  extends: .ota_demo_live_rules
+  stage: ota_campaign
+  image: python:3.11-slim-bookworm
+  tags: [docker, qa-toolchain]
+  needs:
+    - job: validate_ota_artifact_metadata
+      artifacts: true
+    - job: check_ota_platform_health
+      artifacts: true
+  resource_group: ota-campaign-create
+  script:
+    - >-
+      python tools/ota_demo_pipeline.py create-campaign
+      --url "$OTA_PLATFORM_CAMPAIGN_URL"
+      --token-env OTA_PLATFORM_API_TOKEN
+      --artifact-report reports/ota-demo/artifact.json
+      --health-report reports/ota-demo/health.json
+      --idempotency-key "$CI_PROJECT_ID:$CI_PIPELINE_ID:$OTA_ARTIFACT_SHA256"
+      --jira-issue-key "$JIRA_ISSUE_KEY"
+      --target-selector "$OTA_TARGET_SELECTOR"
+      --report reports/ota-demo/campaign.json
+  artifacts:
+    when: always
+    paths: [reports/ota-demo/campaign.json]
+    expire_in: 30 days
+
+link_jira_ota_campaign:
+  extends: .ota_demo_live_rules
+  stage: ota_jira
+  image: python:3.11-slim-bookworm
+  tags: [docker, qa-toolchain]
+  needs:
+    - job: create_ready_ota_campaign
+      artifacts: true
+  script:
+    - >-
+      python tools/ota_demo_pipeline.py link-jira
+      --base-url "$JIRA_BASE_URL"
+      --issue-key "$JIRA_ISSUE_KEY"
+      --user-env JIRA_USER_EMAIL
+      --token-env JIRA_API_TOKEN
+      --campaign-report reports/ota-demo/campaign.json
+      --pipeline-url "$CI_PIPELINE_URL"
+      --report reports/ota-demo/jira-link.json
+  artifacts:
+    when: always
+    paths:
+      - reports/ota-demo/campaign.json
+      - reports/ota-demo/jira-link.json
+    expire_in: 30 days
+
+prepare_first_ota_demo:
+  extends: .ota_demo_live_rules
+  stage: demo_ready
+  image: python:3.11-slim-bookworm
+  tags: [docker, qa-toolchain]
+  needs:
+    - job: link_jira_ota_campaign
+      artifacts: true
+  resource_group: first-ota-demo
+  interruptible: false
+  when: manual
+  allow_failure: false
+  manual_confirmation: "READY Campaign과 Jira 연결만 승인합니다. 이 Job은 실제 OTA를 실행하지 않습니다."
+  environment:
+    name: first-ota-demo
+    action: prepare
+    deployment_tier: production
+  script:
+    - >-
+      python tools/ota_demo_pipeline.py demo-ready
+      --campaign-report reports/ota-demo/campaign.json
+      --jira-report reports/ota-demo/jira-link.json
+      --dotenv reports/ota-demo/demo-ready.env
+  artifacts:
+    when: always
+    reports:
+      dotenv: reports/ota-demo/demo-ready.env
+    paths:
+      - reports/ota-demo/campaign.json
+      - reports/ota-demo/jira-link.json
+      - reports/ota-demo/demo-ready.env
+    expire_in: 30 days
