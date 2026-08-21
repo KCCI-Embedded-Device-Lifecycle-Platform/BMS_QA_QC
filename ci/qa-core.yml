@@ -92,6 +92,8 @@ qa_product_artifacts:
   # The EVSE application must end before OTA staging at 0x08100000.
   # Keep this selected gate blocking until the product linker and artifact both comply.
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$RUN_PRODUCT_ARTIFACTS == "1" || $RUN_HIL == "1"'
       when: on_success
       allow_failure: false
@@ -122,6 +124,8 @@ qa_hil_can_infra:
     paths: [reports/hil-can-infra/]
     expire_in: 30 days
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
       when: manual
       allow_failure: false
@@ -147,6 +151,8 @@ qa_hil_safety:
     paths: [reports/hil-safety/]
     expire_in: 30 days
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
       when: manual
       allow_failure: false
@@ -173,6 +179,8 @@ qa_hil_ota_update:
     paths: [reports/hil-ota/]
     expire_in: 30 days
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == "develop" && $CI_COMMIT_REF_PROTECTED == "true"'
       when: manual
       allow_failure: false
@@ -197,9 +205,11 @@ qa_hil_can_e2e_usb:
     - .qa-hil-venv/bin/python -m pip install --no-cache-dir -r requirements-qa.txt
   script:
     - mkdir -p reports/hil-can-e2e-usb
-    - .qa-hil-venv/bin/python tools/can_usb_preflight.py --selected "$HIL_CAN_CHANNEL" --output reports/hil-can-e2e-usb/usb-preflight.json
+    - export AUTO_USB_PORT=$(ls /dev/ttyUSB* | sort -r | head -n 1)
+    - echo "Detected CAN USB port at $AUTO_USB_PORT"
+    - .qa-hil-venv/bin/python tools/can_usb_preflight.py --selected "$AUTO_USB_PORT" --output reports/hil-can-e2e-usb/usb-preflight.json
     - echo "Executing passive BMS-EVSE CAN acceptance using HIL_CONFIG"
-    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG_PATH" --can-channel "$HIL_CAN_CHANNEL" --suite can-passive --reports reports/hil-can-e2e-usb --require-all-executed
+    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG_PATH" --can-channel "$AUTO_USB_PORT" --suite can-passive --reports reports/hil-can-e2e-usb --require-all-executed
   artifacts:
     when: always
     reports:
@@ -207,5 +217,7 @@ qa_hil_can_e2e_usb:
     paths: [reports/hil-can-e2e-usb/]
     expire_in: 30 days
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
       when: always

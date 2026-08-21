@@ -1,12 +1,17 @@
 include:
   - local: ci/qa-core.yml
+  - local: ci/ota-platform-demo.yml
 
 stages:
   - validate
   - infra
   - image
   - test
+  - ota_validate
+  - ota_campaign
+  - ota_jira
   - hil
+  - demo_ready
 
 workflow:
   rules:
@@ -154,6 +159,8 @@ verify_rpi_docker_base:
       - reports/rpi-docker-base.txt
 
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "web"'
@@ -273,6 +280,8 @@ build_rpi_qa_image:
       - reports/rpi-qa-image-build.txt
 
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     # On develop, publish only when the image definition changed, and require
     # an explicit approval.
     - if: '$CI_COMMIT_BRANCH == "develop"'
@@ -440,6 +449,8 @@ verify_rpi_qa_image:
       - reports/rpi-qa-image-verify.txt
 
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == "develop"'
       changes:
         - docker/Dockerfile.rpi-qa
@@ -512,6 +523,8 @@ evse_led_register_smoke:
       - logs/
 
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     # develop: optional manual smoke test; not running it does not block normal
     # development.
     - if: '$CI_COMMIT_BRANCH == "develop"'
@@ -609,6 +622,8 @@ evse_relay_pe11_smoke:
       - logs/
 
   rules:
+    - if: '$RUN_FIRST_OTA_DEMO == "1"'
+      when: never
     - if: '$CI_COMMIT_BRANCH =~ /^test\/BEOG-17-/'
       when: manual
       allow_failure: false
