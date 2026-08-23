@@ -27,3 +27,12 @@ for dir in .products/EVSE-Application .products/ota-platform/EVSE_BOOT; do
     fi
   fi
 done
+
+# VERY IMPORTANT: Enforce CAN and Relay Actuation in EVSE for HIL testing
+# Product baseline disables these for bench safety. We MUST enable them for HIL CAN tests.
+EVSE_APP_CONFIG=".products/EVSE-Application/MyApp/Common/app_config.h"
+if [ -f "$EVSE_APP_CONFIG" ]; then
+  sed -i 's/#define EVSE_CFG_CAN_ENABLED[[:space:]]*0U/#define EVSE_CFG_CAN_ENABLED              1U/g' "$EVSE_APP_CONFIG"
+  sed -i 's/#define EVSE_CFG_RELAY_ACTUATION_ENABLED[[:space:]]*0U/#define EVSE_CFG_RELAY_ACTUATION_ENABLED  1U/g' "$EVSE_APP_CONFIG"
+  echo "HIL Override: EVSE_CFG_CAN_ENABLED and EVSE_CFG_RELAY_ACTUATION_ENABLED set to 1U in EVSE-Application."
+fi
