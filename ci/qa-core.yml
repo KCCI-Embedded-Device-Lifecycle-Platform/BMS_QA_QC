@@ -1,0 +1,210 @@
+variables:
+  BMS_PRODUCT_REPO: "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/BMS.git"
+  BMS_PRODUCT_REF: "83b1fdf98fa8c5eef792533446826498c36ff030"
+  EVSE_CAN_PRODUCT_REF: "06f6111e2a4072350ae73af28b3a54e3b6a95a8d"
+  OTA_PRODUCT_REPO: "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/ota-platform.git"
+  OTA_PRODUCT_REF: "b810605e2a0e610270d4727d95eb108f7eda6a65"
+
+.qa_core_rules:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^(feature|fix|test)\//'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - when: never
+
+qa_static:
+  extends: .qa_core_rules
+  stage: validate
+  image: python:3.11-bookworm
+  tags: [docker, qa-toolchain]
+  before_script:
+    - pip install --no-cache-dir -r requirements-qa.txt
+  script:
+    - python tools/generate_jira_catalog.py
+    - git diff --exit-code -- docs/jira_export
+    - python -m compileall -q hil tests tools
+    - python -c "import hil; import hil.report_junit"
+    - ruff check hil tests/host/bms tests/host/common tests/host/evse/test_evse_core_host.py tests/host/ota tests/quality tools --ignore E501
+    - python -m pytest tests/quality -m "host or gap" --junitxml=reports/static/junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: reports/static/junit.xml
+    paths:
+      - reports/static/
+      - docs/jira_export/
+    expire_in: 30 days
+
+qa_host_tests:
+  extends: .qa_core_rules
+  stage: test
+  image: python:3.11-bookworm
+  tags: [docker, qa-toolchain]
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends gcc git
+    - pip install --no-cache-dir -r requirements-qa.txt
+    - bash tools/clone_products.sh
+  variables:
+    BMS_PRODUCT_DIR: "$CI_PROJECT_DIR/.products/BMS"
+    EVSE_PRODUCT_DIR: "$CI_PROJECT_DIR/.products/EVSE-Application"
+    OTA_BOOT_DIR: "$CI_PROJECT_DIR/.products/ota-platform/EVSE_BOOT/EVSE_BOOT"
+  script:
+    - python -m pytest tests/host/bms tests/host/evse/test_evse_core_host.py tests/host/ota -m host --junitxml=reports/host/junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: reports/host/junit.xml
+    paths: [reports/host/]
+    expire_in: 30 days
+
+qa_product_artifacts:
+  stage: test
+  image: ubuntu:24.04
+  tags: [docker, qa-toolchain]
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends ca-certificates cmake gcc-arm-none-eabi git ninja-build python3
+    - bash tools/clone_products.sh
+  script:
+    - python3 tools/check_linker_layout.py --linker .products/EVSE-Application/STM32F429XX_FLASH.ld --origin 0x08020000 --end 0x08100000
+    - cmake -S .products/BMS -B .products/BMS/build/qa-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$CI_PROJECT_DIR/.products/BMS/cmake/gcc-arm-none-eabi.cmake"
+    - cmake --build .products/BMS/build/qa-release
+    - cmake -S .products/EVSE-Application -B .products/EVSE-Application/build/qa-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$CI_PROJECT_DIR/.products/EVSE-Application/cmake/gcc-arm-none-eabi.cmake"
+    - cmake --build .products/EVSE-Application/build/qa-release
+    - cmake -S .products/ota-platform/EVSE_BOOT -B .products/ota-platform/EVSE_BOOT/build/qa-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$CI_PROJECT_DIR/.products/ota-platform/EVSE_BOOT/cmake/gcc-arm-none-eabi.cmake"
+    - cmake --build .products/ota-platform/EVSE_BOOT/build/qa-release
+    - mkdir -p artifacts/bms artifacts/evse artifacts/ota
+    - arm-none-eabi-objcopy -O binary .products/BMS/build/qa-release/Embedded_Device_Lifecycle_BMS.elf artifacts/bms/bms.bin
+    - cp .products/BMS/build/qa-release/Embedded_Device_Lifecycle_BMS.elf artifacts/bms/bms.elf
+    - cp .products/EVSE-Application/build/qa-release/bms_esev.elf artifacts/evse/evse.elf
+    - cp .products/EVSE-Application/build/qa-release/bms_esev.bin artifacts/evse/evse.bin
+    - cp .products/ota-platform/EVSE_BOOT/build/qa-release/Bootloader.elf artifacts/ota/bootloader.elf
+    - cp .products/ota-platform/EVSE_BOOT/build/qa-release/Bootloader.bin artifacts/ota/bootloader.bin
+    - python3 tools/verify_firmware_artifact.py --product bms --source-sha "$BMS_PRODUCT_REF" --elf artifacts/bms/bms.elf --bin artifacts/bms/bms.bin --flash-start 0x08000000 --flash-end 0x08080000 --max-size 0x80000 --manifest artifacts/bms/manifest.json
+    - python3 tools/verify_firmware_artifact.py --product evse --source-sha "$EVSE_CAN_PRODUCT_REF" --elf artifacts/evse/evse.elf --bin artifacts/evse/evse.bin --flash-start 0x08020000 --flash-end 0x08100000 --max-size 0xE0000 --manifest artifacts/evse/manifest.json
+    - python3 tools/verify_firmware_artifact.py --product ota --source-sha "$OTA_PRODUCT_REF" --elf artifacts/ota/bootloader.elf --bin artifacts/ota/bootloader.bin --flash-start 0x08000000 --flash-end 0x08020000 --max-size 0x20000 --manifest artifacts/ota/manifest.json
+  artifacts:
+    when: always
+    paths: [artifacts/]
+    expire_in: 30 days
+  # The current EVSE linker region reaches 0x08200000 and overlaps the OTA
+  # staging boundary at 0x08100000.  Keep the P0 gate visible and blocking when
+  # selected, without making unrelated Host/traceability pipelines red.
+  rules:
+    - if: '$RUN_PRODUCT_ARTIFACTS == "1" || $RUN_HIL == "1"'
+      when: on_success
+      allow_failure: false
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: true
+    - when: never
+
+qa_hil_can_infra:
+  stage: hil
+  tags: [rpi-shell, hil, bench-01]
+  resource_group: bench-01
+  interruptible: false
+  manual_confirmation: "BEOG-48: BMS/EVSE/Pi 전원을 끈 상태에서 종단저항을 측정했고 CAN Analyzer가 /dev/ttyUSB0 또는 승인된 can0에 연결되었습니까?"
+  variables:
+    # This is an infrastructure verdict only.  It does not prove which image
+    # is flashed on either ECU and must not close a product safety requirement.
+    HIL_FORMAL: "0"
+  before_script:
+    - python3 -m venv .qa-hil-venv
+    - .qa-hil-venv/bin/python -m pip install --no-cache-dir -r requirements-qa.txt
+  script:
+    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG" --suite can-infra --reports reports/hil-can-infra --require-all-executed
+  artifacts:
+    when: always
+    reports:
+      junit: reports/hil-can-infra/junit.xml
+    paths: [reports/hil-can-infra/]
+    expire_in: 30 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: false
+
+qa_hil_can_start_stop:
+  stage: hil
+  tags: [rpi-shell, hil, bench-01]
+  resource_group: bench-01
+  interruptible: false
+  manual_confirmation: "BEOG-49: no-load, current limit, hard interlock, dual ST-Link/OpenOCD, 절연 START/STOP actuator를 확인했습니까?"
+  variables:
+    HIL_FORMAL: "1"
+  needs:
+    - job: qa_product_artifacts
+      artifacts: true
+  before_script:
+    - test "$HIL_ALLOW_ACTUATION" = "YES"
+    - python3 -m venv .qa-hil-venv
+    - .qa-hil-venv/bin/python -m pip install --no-cache-dir -r requirements-qa.txt
+  script:
+    - .qa-hil-venv/bin/python tools/verify_target_image.py --config "$HIL_CONFIG" --target bms --image artifacts/bms/bms.elf --source-sha "$BMS_PRODUCT_REF" --manifest reports/hil-can-start-stop/target-bms.json
+    - .qa-hil-venv/bin/python tools/verify_target_image.py --config "$HIL_CONFIG" --target evse --image artifacts/evse/evse.elf --source-sha "$EVSE_CAN_PRODUCT_REF" --manifest reports/hil-can-start-stop/target-evse.json
+    - .qa-hil-venv/bin/python -m hil.test_orchestrator --config "$HIL_CONFIG" --suite can-start-stop --reports reports/hil-can-start-stop --require-all-executed
+  artifacts:
+    when: always
+    reports:
+      junit: reports/hil-can-start-stop/junit.xml
+    paths: [reports/hil-can-start-stop/]
+    expire_in: 30 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: false
+
+qa_hil_safety:
+  stage: hil
+  image: "$RPI_QA_IMAGE"
+  tags: [raspberrypi, hil]
+  resource_group: bms-evse-hil-bench
+  variables:
+    HIL_FORMAL: "1"
+  needs:
+    - job: qa_product_artifacts
+      artifacts: true
+  script:
+    - python tools/verify_target_image.py --config "$HIL_CONFIG" --target bms --image artifacts/bms/bms.elf --source-sha "$BMS_PRODUCT_REF" --manifest reports/hil-safety/target-bms.json
+    - python tools/verify_target_image.py --config "$HIL_CONFIG" --target evse --image artifacts/evse/evse.elf --source-sha "$EVSE_CAN_PRODUCT_REF" --manifest reports/hil-safety/target-evse.json
+    - python -m hil.test_orchestrator --config "$HIL_CONFIG" --suite safety --reports reports/hil-safety --require-all-executed
+  artifacts:
+    when: always
+    reports:
+      junit: reports/hil-safety/junit.xml
+    paths: [reports/hil-safety/]
+    expire_in: 30 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_PIPELINE_SOURCE == "web"'
+      when: manual
+      allow_failure: false
+
+qa_hil_ota_update:
+  stage: hil
+  image: "$RPI_QA_IMAGE"
+  tags: [raspberrypi, hil]
+  resource_group: bms-evse-hil-bench
+  variables:
+    HIL_FORMAL: "1"
+    OTA_RECOVERY_IMAGE: "$CI_PROJECT_DIR/artifacts/evse/evse.bin"
+  needs:
+    - job: qa_product_artifacts
+      artifacts: true
+  script:
+    - test "$HIL_ALLOW_OTA_ERASE" = "YES"
+    - python tools/verify_target_image.py --config "$HIL_CONFIG" --target ota --image artifacts/ota/bootloader.elf --source-sha "$OTA_PRODUCT_REF" --manifest reports/hil-ota/target-ota.json
+    - python -m hil.test_orchestrator --config "$HIL_CONFIG" --suite ota --reports reports/hil-ota --require-all-executed
+  artifacts:
+    when: always
+    reports:
+      junit: reports/hil-ota/junit.xml
+    paths: [reports/hil-ota/]
+    expire_in: 30 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_COMMIT_REF_PROTECTED == "true"'
+      when: manual
+      allow_failure: false
+    - when: never

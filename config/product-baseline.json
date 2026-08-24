@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "qualification_policy": "Candidate refs require an explicit QA review before any HIL flash.",
+  "products": {
+    "bms": {
+      "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/BMS.git",
+      "candidate_ref": "83b1fdf98fa8c5eef792533446826498c36ff030",
+      "target": "STM32F446RET6",
+      "qualification_status": "UNDER_REVIEW"
+    },
+    "evse": {
+      "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/EVSE-Application.git",
+      "candidate_ref": "06f6111e2a4072350ae73af28b3a54e3b6a95a8d",
+      "bench_safe_ref": "a133fbf003be722dc1a1d879e5f7e98639e82e11",
+      "target": "STM32F429ZIT6",
+      "qualification_status": "ACTUATION_INTERLOCK_REQUIRED"
+    },
+    "ota": {
+      "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/ota-platform.git",
+      "candidate_ref": "b810605e2a0e610270d4727d95eb108f7eda6a65",
+      "canonical_path": "EVSE_BOOT/EVSE_BOOT",
+      "target": "STM32F429ZIT6",
+      "qualification_status": "UNDER_REVIEW"
+    },
+    "gateway": {
+      "repository": "https://github.com/KCCI-Embedded-Device-Lifecycle-Platform/ota-platform.git",
+      "candidate_ref": "b810605e2a0e610270d4727d95eb108f7eda6a65",
+      "qualification_status": "CONTRACT_WAITING"
+    }
+  }
+}
