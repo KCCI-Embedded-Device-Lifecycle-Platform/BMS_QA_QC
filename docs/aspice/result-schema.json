@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "allowed_classifications": [
+    "PASS",
+    "FAIL_PRODUCT",
+    "GAP_REQUIREMENT",
+    "FAIL_TEST",
+    "BLOCKED_INFRA",
+    "MISMATCH_CONFIGURATION",
+    "NOT_APPLICABLE"
+  ],
+  "mandatory_evidence": [
+    "test_id",
+    "requirement_id",
+    "qa_commit_sha",
+    "product_commit_sha",
+    "artifact_sha256",
+    "target_identity",
+    "environment_identity",
+    "start_utc",
+    "duration_ms",
+    "classification",
+    "oracle_observation"
+  ]
+}
