@@ -1,0 +1,13 @@
+.git
+.gitlab
+__pycache__/
+*.pyc
+reports/
+logs/
+evidence/
+build/
+**/build/
+.env
+.env.*
+*.pem
+*.key

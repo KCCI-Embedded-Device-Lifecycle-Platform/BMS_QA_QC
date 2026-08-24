@@ -1,0 +1,30 @@
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        can-utils \
+        cmake \
+        gcc \
+        gcc-arm-none-eabi \
+        git \
+        make \
+        ninja-build \
+        openocd \
+        python3 \
+        python3-pip \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /qa
+COPY requirements-qa.txt /tmp/requirements-qa.txt
+RUN python3 -m venv /opt/qa-venv \
+    && /opt/qa-venv/bin/pip install --no-cache-dir -r /tmp/requirements-qa.txt
+
+ENV PATH="/opt/qa-venv/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+CMD ["python", "-m", "pytest", "tests/host", "tests/quality"]
