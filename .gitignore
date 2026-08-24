@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage.xml
+build-qa/
+reports/
+artifacts/
+.venv/
+.qa-hil-venv/
+*.egg-info/
+
+# Product checkouts are fetched by CI and are never QA source.
+.products/
+node_modules/
+outputs/
+node.cmd
+container_tools/
+
+# Local hardware configuration may contain device paths or credentials.
+hil/fixtures/config.local.json

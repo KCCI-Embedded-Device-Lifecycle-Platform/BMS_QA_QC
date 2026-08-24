@@ -1,0 +1,48 @@
+{
+  "product_baselines": {
+    "bms_sha": "83b1fdf98fa8c5eef792533446826498c36ff030",
+    "evse_safe_sha": "a133fbf003be722dc1a1d879e5f7e98639e82e11",
+    "evse_can_sha": "06f6111e2a4072350ae73af28b3a54e3b6a95a8d",
+    "ota_platform_sha": "b810605e2a0e610270d4727d95eb108f7eda6a65"
+  },
+  "can": {
+    "interface": "seeedstudio",
+    "channel": "/dev/ttyUSB0",
+    "bitrate": 500000,
+    "frame_type": "STD",
+    "operation_mode": "normal"
+  },
+  "uart": {
+    "port": "/dev/ttyUSB1",
+    "baudrate": 115200,
+    "timeout_s": 1.0
+  },
+  "openocd": {
+    "evse": {"host": "127.0.0.1", "port": 4444},
+    "bms": {"host": "127.0.0.1", "port": 4445},
+    "ota": {"host": "127.0.0.1", "port": 4444}
+  },
+  "fixture": {
+    "termination_ohms": null,
+    "hard_interlock_confirmed": false
+  },
+  "timing": {
+    "relative_tolerance": 0.35,
+    "observation_s": 4.0,
+    "e2e_timeout_s": 3.0
+  },
+  "stimulus": {
+    "start_command": "",
+    "stop_command": "",
+    "bms_silence_command": "",
+    "bms_restore_command": "",
+    "evse_silence_command": "",
+    "evse_restore_command": "",
+    "critical_fault_command": "",
+    "critical_fault_clear_command": "",
+    "boot_button_press_command": "",
+    "boot_button_release_command": "",
+    "bus_fault_command": "",
+    "power_cut_command": ""
+  }
+}
